@@ -1,0 +1,11 @@
+{
+  "name": "naija-games",
+  "private": true,
+  "packageManager": "pnpm@12.9.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./apps/* dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  }
+}
