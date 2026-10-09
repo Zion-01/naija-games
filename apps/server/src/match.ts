@@ -38,6 +38,12 @@ export type MatchOptions = {
   now?: () => number;
   /** Called once when a game ends, to save the result. */
   onOver?: (record: MatchRecord) => void;
+  /**
+   * Quick-match: seat i is held for `reserved[i]` (a verified `playerId`); seats past the list go to the computer.
+   * Nobody hosts, and the game deals as soon as every held player is in, or after `fillAfterMs` without them.
+   */
+  reserved?: string[];
+  fillAfterMs?: number;
 };
 
 /** A finished game, as saved to the `matches` and `match_players` tables. */
@@ -90,6 +96,8 @@ export class Match<S, M, V> {
   private readonly reactTimers = new Set<ReturnType<typeof setTimeout>>();
   private readonly asked = new Set<string>();
   private readonly recentMoves = new Map<string, number[]>();
+  private readonly reserved: string[] | null;
+  private fillTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     readonly code: string,
@@ -106,6 +114,15 @@ export class Match<S, M, V> {
     this.rateWindowMs = opts.rateWindowMs ?? 2000;
     this.now = opts.now ?? Date.now;
     this.onOver = opts.onOver;
+    this.reserved = opts.reserved ?? null;
+    // A matched player who never shows up gets replaced by the computer, so the other one isn't stuck.
+    // If nobody came at all, Colyseus disposes the empty room on its own.
+    const fill = () => this.seats.some((s) => s?.kind === 'human') && this.fillAndBegin();
+    if (this.reserved) this.fillTimer = setTimeout(fill, opts.fillAfterMs ?? 10_000);
+  }
+
+  get quick() {
+    return this.reserved !== null;
   }
 
   seatOf(sessionId: string) {
@@ -128,8 +145,18 @@ export class Match<S, M, V> {
       return mine;
     }
 
+    if (this.reserved) {
+      const held = this.reserved.indexOf(who.playerId);
+      if (held >= 0 && this.status === 'waiting' && !this.seats[held]) {
+        this.seats[held] = { name, kind: 'human', host: false, playerId: who.playerId, userId: who.userId, sessionId, connected: true };
+        if (this.reserved.every((id) => this.seats.some((s) => s?.playerId === id))) this.fillAndBegin();
+        else this.changed();
+        return held;
+      }
+    }
+
     const open = this.seats.indexOf(null);
-    if (!opts.spectate && this.status === 'waiting' && open >= 0) {
+    if (!opts.spectate && !this.reserved && this.status === 'waiting' && open >= 0) {
       this.seats[open] = { name, kind: 'human', host: !this.host, playerId: who.playerId, userId: who.userId, sessionId, connected: true };
       if (!this.seats.includes(null)) this.begin();
       else this.changed();
@@ -182,13 +209,7 @@ export class Match<S, M, V> {
   start(sessionId: string): string | null {
     const seat = this.seats[this.seatOf(sessionId)];
     if (!seat?.host) return 'Na only the host fit start';
-    if (this.status !== 'waiting') return null;
-    let ai = 0;
-    for (let i = 0; i < this.seats.length; i++) {
-      if (this.seats[i]) continue;
-      this.seats[i] = { name: AI_NAMES[ai++ % AI_NAMES.length]!, kind: 'ai', host: false, playerId: null, userId: null, sessionId: null, connected: true };
-    }
-    this.begin();
+    this.fillAndBegin();
     return null;
   }
 
@@ -234,6 +255,7 @@ export class Match<S, M, V> {
       round: this.round,
       now: this.now(),
       ratings: this.ratings,
+      quick: this.quick,
     };
   }
 
@@ -245,11 +267,26 @@ export class Match<S, M, V> {
       seats: this.seats.length,
       filled: this.seats.filter(Boolean).length,
       status: this.status,
+      quick: this.quick,
     };
   }
 
   dispose() {
     this.clearTimers();
+    if (this.fillTimer) clearTimeout(this.fillTimer);
+  }
+
+  /** Gives every open seat to the computer and deals (the host's Start, or a quick-match room that's ready). */
+  private fillAndBegin() {
+    if (this.fillTimer) clearTimeout(this.fillTimer);
+    this.fillTimer = null;
+    if (this.status !== 'waiting') return;
+    let ai = 0;
+    for (let i = 0; i < this.seats.length; i++) {
+      if (this.seats[i]) continue;
+      this.seats[i] = { name: AI_NAMES[ai++ % AI_NAMES.length]!, kind: 'ai', host: false, playerId: null, userId: null, sessionId: null, connected: true };
+    }
+    this.begin();
   }
 
   private begin() {

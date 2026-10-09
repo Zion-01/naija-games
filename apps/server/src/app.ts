@@ -3,7 +3,8 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { normalizeCode } from '@naija/online';
 import { authFromEnv, type Authenticator } from './auth';
 import { resultsFromEnv, type ResultSink } from './results';
-import { AyoRoom, WhotRoom, matches, services } from './rooms';
+import { ratingsFromEnv, type RatingSource } from './ratings';
+import { AyoRoom, QueueRoom, WhotRoom, matches, services } from './rooms';
 
 /** GET /rooms/:code → public room facts for the invite page and its link preview. KI-6: not rate-limited yet. */
 const getRoom = createEndpoint('/rooms/:code', { method: 'GET' }, async (ctx) => {
@@ -15,13 +16,14 @@ const getRoom = createEndpoint('/rooms/:code', { method: 'GET' }, async (ctx) =>
 
 const health = createEndpoint('/health', { method: 'GET' }, async () => ({ ok: true }));
 
-/** Identity and result saving default to the environment (SUPABASE_URL, SUPABASE_SECRET_KEY); tests pass their own. */
-export function createServer(opts: { auth?: Authenticator; results?: ResultSink | null } = {}) {
+/** Identity, result saving and ratings default to the environment (SUPABASE_URL, SUPABASE_SECRET_KEY); tests pass their own. */
+export function createServer(opts: { auth?: Authenticator; results?: ResultSink | null; ratings?: RatingSource | null } = {}) {
   services.auth = opts.auth ?? authFromEnv();
   services.results = opts.results !== undefined ? opts.results : resultsFromEnv();
+  services.ratings = opts.ratings !== undefined ? opts.ratings : ratingsFromEnv();
   return defineServer({
     transport: new WebSocketTransport(),
-    rooms: { whot: defineRoom(WhotRoom), ayo: defineRoom(AyoRoom) },
+    rooms: { whot: defineRoom(WhotRoom), ayo: defineRoom(AyoRoom), queue: defineRoom(QueueRoom) },
     routes: createRouter({ getRoom, health }),
     greet: false,
   });

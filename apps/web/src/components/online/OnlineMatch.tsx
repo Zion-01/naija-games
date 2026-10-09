@@ -95,7 +95,9 @@ function Room({ code }: { code: string }) {
           Network don shake. Reconnecting…
         </p>
       )}
-      {snap.status === "waiting" ? (
+      {snap.status === "waiting" && snap.quick ? (
+        <Waiting text="Your opponent dey come… If dem no show, the computer go play you." />
+      ) : snap.status === "waiting" ? (
         <WaitingRoom snap={snap} conn={conn} />
       ) : snap.game === "whot" ? (
         <OnlineWhot snap={snap as Snapshot<"whot">} conn={conn} push={push} />

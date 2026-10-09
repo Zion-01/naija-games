@@ -7,6 +7,8 @@ import {
   type ErrorMessage,
   type GameId,
   type JoinOptions,
+  type MatchedMessage,
+  type QueueOptions,
   type Snapshot,
   type WhotRoomOptions,
   type WhotWireMove,
@@ -170,6 +172,92 @@ export async function createRoom(game: GameId, nickname: string, whot?: WhotRoom
   const release = conn.retain();
   setTimeout(release, 15_000);
   return room.roomId;
+}
+
+export type SearchState =
+  | { status: "searching" }
+  | { status: "matched"; code: string }
+  | { status: "failed"; error: string };
+
+/**
+ * A quick-match search: waits in the server's queue room until it pairs you (by your rating, read on the server),
+ * then opens the room's connection so /play/CODE picks it up without asking your name again.
+ */
+export class Search {
+  private state: SearchState = { status: "searching" };
+  private readonly listeners = new Set<() => void>();
+  private room: Room | null = null;
+  private done = false;
+  private users = 0;
+  private cancelTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(
+    readonly game: GameId,
+    nickname: string,
+  ) {
+    ensureGuest(nickname);
+    void this.run();
+  }
+
+  get = () => this.state;
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  /** Stop waiting and play the computer instead. */
+  solo() {
+    this.room?.send(MSG.solo);
+  }
+
+  cancel() {
+    this.done = true;
+    void this.room?.leave(true);
+  }
+
+  /** Like `Connection.retain`: the last user going away cancels the search, unless it comes straight back (Strict Mode). */
+  retain() {
+    this.users++;
+    if (this.cancelTimer) clearTimeout(this.cancelTimer);
+    this.cancelTimer = null;
+    return () => {
+      if (--this.users === 0) this.cancelTimer = setTimeout(() => this.cancel(), 300);
+    };
+  }
+
+  private async run() {
+    try {
+      const { client, options } = await signedIn();
+      const room = await client.joinOrCreate("queue", { ...options, game: this.game } satisfies QueueOptions);
+      if (this.done) return void room.leave(true);
+      this.room = room;
+      room.onMessage(MSG.matched, ({ code }: MatchedMessage) => {
+        this.done = true;
+        // Join straight away; the page has 15s to pick the connection up (as with createRoom).
+        const release = connect(code).retain();
+        setTimeout(release, 15_000);
+        void room.leave(true);
+        this.set({ status: "matched", code });
+      });
+      room.onMessage(MSG.error, (e: ErrorMessage) => this.fail(e.text));
+      room.onLeave(() => this.fail("Network don shake. Try again."));
+    } catch (e) {
+      this.fail(joinError(e));
+    }
+  }
+
+  private fail(error: string) {
+    if (this.done) return;
+    this.done = true;
+    void this.room?.leave(true);
+    this.set({ status: "failed", error });
+  }
+
+  private set(state: SearchState) {
+    this.state = state;
+    this.listeners.forEach((l) => l());
+  }
 }
 
 /** The live connection for a room code, joining it (again) if this tab isn't in it. */

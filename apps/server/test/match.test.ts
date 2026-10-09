@@ -256,3 +256,40 @@ describe('rating changes', () => {
     expect(match.snapshotFor('a').ratings).toBeNull();
   });
 });
+
+describe('quick-match seats', () => {
+  const quick = (reserved: string[], opts = {}) => whotMatch(2, { reserved: reserved.map((id) => `guest:${id}`), ...opts }).match;
+
+  it('holds each seat for its matched player, deals once both are in, and lets anyone else only watch', () => {
+    const match = quick(['tunde', 'bisi']);
+    expect(join(match, 'stranger')).toBe(-1);
+    expect(join(match, 'bisi')).toBe(1);
+    expect(match.status).toBe('waiting');
+    expect(join(match, 'tunde')).toBe(0);
+    expect(match.status).toBe('playing');
+    expect(match.seats.every((s) => s?.kind === 'human' && !s.host)).toBe(true);
+    expect(match.snapshotFor('tunde').quick).toBe(true);
+    // Nobody hosts, so nobody can fill a seat with the computer early.
+    expect(match.start('tunde')).toBe('Na only the host fit start');
+  });
+
+  it('gives a no-show’s seat to the computer, but never deals a game with no humans', () => {
+    const match = quick(['tunde', 'bisi'], { fillAfterMs: 10_000 });
+    join(match, 'tunde');
+    vi.advanceTimersByTime(10_000);
+    expect(match.status).toBe('playing');
+    expect(match.seats[1]).toMatchObject({ kind: 'ai', playerId: null });
+
+    const empty = quick(['a', 'b'], { fillAfterMs: 10_000 });
+    vi.advanceTimersByTime(10_000);
+    expect(empty.status).toBe('waiting');
+    empty.dispose();
+  });
+
+  it('seats a solo player against the computer as soon as they arrive', () => {
+    const match = quick(['tunde']);
+    join(match, 'tunde');
+    expect(match.status).toBe('playing');
+    expect(match.seats[1]?.kind).toBe('ai');
+  });
+});

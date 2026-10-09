@@ -97,3 +97,50 @@ describe('private Whot room over WebSockets', () => {
     await host.leave();
   });
 });
+
+describe('quick-match over WebSockets', () => {
+  const queueUp = async (nickname: string, guestId: string, game: 'whot' | 'ayo') => {
+    const room = await new Client(URL).joinOrCreate('queue', { nickname, guestId, game });
+    const code = new Promise<string>((resolve) => room.onMessage('matched', (m: { code: string }) => resolve(m.code)));
+    return { room, code };
+  };
+
+  it('pairs two players into a private 2-player room that deals as soon as both arrive', async () => {
+    const a = await queueUp('Tunde', 'guest-tunde-q01', 'whot');
+    const b = await queueUp('Bisi', 'guest-bisi-q002', 'whot');
+    const [codeA, codeB] = await Promise.all([a.code, b.code]);
+    expect(codeA).toBe(codeB);
+    await Promise.all([a.room.leave(), b.room.leave()]);
+
+    const ra = await new Client(URL).joinById(codeA, { nickname: 'Tunde', guestId: 'guest-tunde-q01' });
+    const wa = watch(ra);
+    // A stranger with the code can only watch.
+    const stranger = await new Client(URL).joinById(codeA, { nickname: 'Emeka', guestId: 'guest-emeka-q03' });
+    const ws = watch(stranger);
+    expect((await ws.until((s) => s.quick)).you).toBe(-1);
+    const rb = await new Client(URL).joinById(codeA, { nickname: 'Bisi', guestId: 'guest-bisi-q002' });
+    const snap = await wa.until((s) => s.status === 'playing');
+    expect(snap).toMatchObject({ quick: true, you: 0 });
+    expect(snap.seats.map((s) => [s?.name, s?.kind, s?.host])).toEqual([
+      ['Tunde', 'human', false],
+      ['Bisi', 'human', false],
+    ]);
+    await Promise.all([ra.leave(), rb.leave(), stranger.leave()]);
+  });
+
+  it('seats a player against the computer when they stop waiting', async () => {
+    const a = await queueUp('Ada', 'guest-ada-q0004', 'ayo');
+    a.room.send('solo');
+    const code = await a.code;
+    await a.room.leave();
+    const room = await new Client(URL).joinById(code, { nickname: 'Ada', guestId: 'guest-ada-q0004' });
+    const snap = await watch(room).until((s) => s.status === 'playing');
+    expect(snap.game).toBe('ayo');
+    expect(snap.seats.map((s) => s?.kind)).toEqual(['human', 'ai']);
+    await room.leave();
+  });
+
+  it('refuses a queue ticket without a game', async () => {
+    await expect(new Client(URL).joinOrCreate('queue', { nickname: 'X', guestId: 'guest-x-q00005' })).rejects.toThrow(/Pick a game/);
+  });
+});
