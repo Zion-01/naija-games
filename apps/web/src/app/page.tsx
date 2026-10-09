@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ayo, whot } from "@naija/engine";
 import { GameRecord, InstallButton, JoinByCode } from "@/components/Lobby";
@@ -45,12 +46,8 @@ export default function Home() {
   return (
     <main className="ankara flex min-h-dvh flex-col">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10">
-        <header className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight">Naija Games</h1>
-            <p className="mt-1 text-lg text-muted">Oya, pick your game.</p>
-          </div>
-          <div className="flex items-center gap-1">
+        <header className="flex flex-col gap-3">
+          <div className="-mt-6 flex items-center justify-end gap-1">
             <SettingsToggles />
             <Link href="/style" aria-label="Your table style" className="grid size-9 place-items-center rounded-full text-xl hover:bg-surface">
               🎨
@@ -61,6 +58,15 @@ export default function Home() {
             <Link href="/profile" aria-label="Your profile" className="grid size-9 place-items-center rounded-full text-xl hover:bg-surface">
               👤
             </Link>
+          </div>
+          <div className="flex items-center gap-3">
+            <Image src="/icon.svg" alt="" width={64} height={64} priority className="-rotate-3 drop-shadow-md" />
+            <div>
+              <h1 className="text-[2.6rem] leading-none tracking-tight">
+                Naija <span className="text-[var(--card-ink)] dark:text-ochre">Games</span>
+              </h1>
+              <p className="mt-1 text-lg text-muted">Oya, pick your game.</p>
+            </div>
           </div>
         </header>
         <div className="kente rounded-full" />

@@ -1,16 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#8a1c2b"/>
-  <g opacity="0.18" fill="#e3a21a">
-    <circle cx="64" cy="64" r="28"/><circle cx="448" cy="448" r="28"/><circle cx="448" cy="64" r="16"/><circle cx="64" cy="448" r="16"/>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+    <pattern id="ankara" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M32 6 58 32 32 58 6 32Z" fill="none" stroke="#e3a21a" stroke-width="5"/>
+      <circle cx="32" cy="32" r="7" fill="#f76707"/>
+      <circle cx="0" cy="0" r="6" fill="#e3a21a"/><circle cx="64" cy="0" r="6" fill="#e3a21a"/>
+      <circle cx="0" cy="64" r="6" fill="#e3a21a"/><circle cx="64" cy="64" r="6" fill="#e3a21a"/>
+    </pattern>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="#24316b"/>
+    <rect width="512" height="512" fill="url(#ankara)" opacity="0.2"/>
+    <circle cx="256" cy="236" r="182" fill="#e3a21a"/>
+    <circle cx="256" cy="236" r="156" fill="none" stroke="#fffdf7" stroke-width="12" stroke-linecap="round" stroke-dasharray="0.1 30" opacity="0.7"/>
   </g>
-  <g transform="rotate(-12 256 256)">
-    <rect x="146" y="96" width="220" height="320" rx="26" fill="#fffdf7"/>
-    <polygon fill="#8a1c2b" points="256,172 280,240 352,240 294,282 316,350 256,308 196,350 218,282 160,240 232,240"/>
-    <text x="172" y="150" font-family="Arial, sans-serif" font-weight="900" font-size="48" fill="#8a1c2b">7</text>
+  <g transform="rotate(-12 226 232)">
+    <rect x="126" y="82" width="200" height="300" rx="26" fill="#fffdf7" stroke="#1f160f" stroke-width="8"/>
+    <polygon fill="#8a1c2b" points="226,150 251,218 324,219 266,262 288,331 226,290 164,331 186,262 128,219 201,218"/>
+    <path fill="#8a1c2b" d="M146 102h32v9l-17 41h-11l16-40h-20z"/>
+    <path fill="#8a1c2b" d="M146 102h32v9l-17 41h-11l16-40h-20z" transform="rotate(180 226 232)"/>
   </g>
-  <g stroke="#3f2610" stroke-width="5">
-    <ellipse cx="346" cy="404" rx="30" ry="24" fill="#f0e2c2" transform="rotate(-20 346 404)"/>
-    <ellipse cx="404" cy="372" rx="30" ry="24" fill="#f0e2c2" transform="rotate(25 404 372)"/>
-    <ellipse cx="398" cy="430" rx="30" ry="24" fill="#f0e2c2" transform="rotate(60 398 430)"/>
+  <g transform="rotate(-6 372 404)">
+    <rect x="252" y="350" width="240" height="108" rx="54" fill="#8b5a2b" stroke="#3f2610" stroke-width="8"/>
+    <circle cx="312" cy="404" r="36" fill="#4a2c12"/>
+    <circle cx="432" cy="404" r="36" fill="#4a2c12"/>
+    <g fill="#f0e2c2" stroke="#3f2610" stroke-width="3">
+      <ellipse cx="300" cy="396" rx="13" ry="10" transform="rotate(-20 300 396)"/>
+      <ellipse cx="324" cy="400" rx="13" ry="10" transform="rotate(30 324 400)"/>
+      <ellipse cx="310" cy="418" rx="13" ry="10" transform="rotate(70 310 418)"/>
+      <ellipse cx="422" cy="408" rx="13" ry="10" transform="rotate(10 422 408)"/>
+      <ellipse cx="443" cy="398" rx="13" ry="10" transform="rotate(-40 443 398)"/>
+    </g>
   </g>
 </svg>

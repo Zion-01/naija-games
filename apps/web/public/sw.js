@@ -1,6 +1,6 @@
 // Offline support for the PWA: both games run fully in the browser, so caching the pages and
 // their static assets is enough to play with no network.
-const CACHE = "naija-games-v5";
+const CACHE = "naija-games-v6";
 const PRECACHE = ["/", "/whot", "/ayo", "/style", "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

@@ -64,6 +64,7 @@
   --color-seed: var(--seed);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
 }
 
 html {
@@ -74,6 +75,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Headings use the chunky display face from the logo. */
+h1,
+h2 {
+  font-family: var(--font-bricolage), var(--font-geist-sans), Arial, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 /* A repeating wax-print motif (diamonds and dots) behind everything. */

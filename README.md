@@ -31,6 +31,14 @@ Playwright needs a Chromium: run `pnpm --filter web exec playwright install chro
 
 `/style` (🎨 in the lobby) picks a Whot card back and an Ayo board. The first ones are free; the rest unlock with wins against the computer, counted on the device (`src/lib/cosmetics.ts`). There's no shop and nothing random, and only you see your choice: it just sets CSS variables on the page.
 
+## Brand
+
+![Naija Games](docs/brand/logo.png)
+
+The mark (`apps/web/src/app/icon.svg`) is a Whot star card on an ochre sun over an indigo ankara tile, with an Ayo board. Colours come from the app theme in `globals.css`: indigo `#24316b`, ochre `#e3a21a`, palm `#1f7a4d`, accent `#d9480f`, card red `#8a1c2b`, on cream `#fbf4e6`. Headings and the wordmark use Bricolage Grotesque ExtraBold.
+
+`node apps/web/scripts/brand.mjs` renders everything from the mark: the app icons, the site-wide link preview (`src/app/opengraph-image.png`), the logo lockups (`docs/brand/logo.png`, `logo-on-dark.png`) and a square promo poster for WhatsApp status and socials (`docs/brand/promo-square.png`). Text in the mark must be paths (the renderer has no system fonts). Bump the `CACHE` name in `public/sw.js` after changing the icons.
+
 ## Analytics and privacy
 
 Two kinds of numbers, neither of them about a person:
