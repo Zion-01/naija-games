@@ -74,7 +74,7 @@ The web app goes on Vercel and the game server on Render (free plan). Do these i
    - `NEXT_PUBLIC_GAME_SERVER_URL` and `GAME_SERVER_URL`: the Render URL from step 1
 3. **Supabase URLs.** Authentication → URL Configuration: set the Site URL to the Vercel address and add `https://<that address>/profile` to Redirect URLs (Google sign-in comes back there).
 4. **CAPTCHA (in this order).** Create a Turnstile widget in the Cloudflare dashboard for the Vercel domain. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` on Vercel and redeploy. *Then* in Supabase → Authentication → Attack Protection, enable CAPTCHA with Turnstile and the widget's secret key. Doing it the other way round breaks guest sign-in until the site key is live.
-5. **Try it on a real phone** (KI-4): open the site, start an online game, send the WhatsApp invite to another phone and play it out.
+5. **Try it on a real phone**: open the site, start an online game, send the WhatsApp invite to another phone and play it out.
 
 To check the server image locally (needs Docker): `docker build -f apps/server/Dockerfile -t naija-games-server .` from the repository root.
 
