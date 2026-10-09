@@ -1,0 +1,28 @@
+# Render Blueprint for the game server (Render dashboard → New → Blueprint → this repository).
+# The web app is deployed on Vercel; see "Deploying" in the README.
+services:
+  - type: web
+    name: naija-games-server
+    runtime: docker
+    # Free instances sleep after 15 minutes with no HTTP requests or WebSocket messages, and take up to a minute
+    # to wake. The web app sends a keepalive while a player is in a room and wakes the server when someone picks
+    # Online. Change to `starter` for an always-on server.
+    plan: free
+    # Closest Render region to Nigeria.
+    region: frankfurt
+    dockerfilePath: ./apps/server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - apps/server/**
+        - packages/**
+        - pnpm-lock.yaml
+        - render.yaml
+    envVars:
+      - key: SUPABASE_URL
+        value: https://xotjtshlesompmxnhjke.supabase.co
+      # Paste the secret key in the dashboard when Render asks; it is never committed.
+      - key: SUPABASE_SECRET_KEY
+        sync: false

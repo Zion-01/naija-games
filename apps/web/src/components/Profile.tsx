@@ -11,16 +11,13 @@ import {
   isGuest,
   linkGoogle,
   linkedWith,
-  normalizePhone,
   PROVISIONAL_GAMES,
   ratingsFor,
   recentGames,
   saveNickname,
-  sendPhoneCode,
   signInWithGoogle,
   signOut,
   useAccount,
-  verifyPhoneCode,
   type GameResult,
   type PlayedGame,
   type Rating,
@@ -76,92 +73,9 @@ function NicknameCard() {
   );
 }
 
-/** Texts a code to a phone number, then checks it. `link` saves the current guest; otherwise signs in. */
-function PhoneForm({ link, onDone, onCancel }: { link: boolean; onDone: () => void; onCancel: () => void }) {
-  const [phone, setPhone] = useState("");
-  const [sentTo, setSentTo] = useState<string | null>(null);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function run(step: () => Promise<void>) {
-    setBusy(true);
-    setError(null);
-    try {
-      await step();
-    } catch (e) {
-      setError(message(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const send = () =>
-    run(async () => {
-      const e164 = normalizePhone(phone);
-      if (!e164) throw new AccountError("That number no complete. Try am like 0803 123 4567.");
-      await sendPhoneCode(e164, link);
-      setSentTo(e164);
-    });
-
-  const verify = () =>
-    run(async () => {
-      await verifyPhoneCode(sentTo!, code, link);
-      onDone();
-    });
-
-  const field = "rounded-2xl bg-background px-4 py-3 text-lg font-bold shadow-inner outline-none ring-accent focus:ring-2";
-  return (
-    <div className="flex flex-col gap-3">
-      {!sentTo ? (
-        <>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="0803 123 4567"
-            aria-label="Phone number"
-            className={field}
-          />
-          <PrimaryButton onClick={send} className={busy ? "pointer-events-none opacity-60" : ""}>
-            {busy ? "Sending…" : "Text me a code"}
-          </PrimaryButton>
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-muted">We don text a code to {sentTo}.</p>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && verify()}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={8}
-            placeholder="123456"
-            aria-label="Code from the SMS"
-            className={`${field} font-mono tracking-[0.3em]`}
-          />
-          <PrimaryButton onClick={verify} className={busy || code.length < 6 ? "pointer-events-none opacity-60" : ""}>
-            {busy ? "Checking…" : "Confirm"}
-          </PrimaryButton>
-        </>
-      )}
-      {error && <p className="text-center text-sm font-semibold text-[var(--card-ink)]">{error}</p>}
-      <button type="button" onClick={onCancel} className="text-sm font-semibold text-muted underline">
-        Cancel
-      </button>
-    </div>
-  );
-}
-
 function AccountCard({ user }: { user: User | null }) {
-  const [phoneFor, setPhoneFor] = useState<"link" | "signin" | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const guest = isGuest(user);
   const linked = linkedWith(user);
 
@@ -174,31 +88,14 @@ function AccountCard({ user }: { user: User | null }) {
     }
   };
 
-  if (phoneFor) {
-    return (
-      <Card title={phoneFor === "link" ? "Save with your number" : "Sign in with your number"}>
-        <PhoneForm
-          link={phoneFor === "link"}
-          onCancel={() => setPhoneFor(null)}
-          onDone={() => {
-            setPhoneFor(null);
-            setNotice(phoneFor === "link" ? "Your account don save. Your record go follow you." : "You don sign in. Welcome back!");
-          }}
-        />
-      </Card>
-    );
-  }
-
   return (
     <Card title="Your account">
-      {notice && <p className="rounded-2xl bg-palm px-4 py-2 text-sm font-bold text-white">{notice}</p>}
       {guest ? (
         <>
           <p className="text-muted">
             You dey play as a guest. Save your account so your online record go follow you if you change phone or clear your browser.
           </p>
           <PrimaryButton onClick={() => act(linkGoogle)}>Save with Google</PrimaryButton>
-          <SecondaryButton onClick={() => setPhoneFor("link")}>📱 Save with phone number</SecondaryButton>
           {!showSignIn ? (
             <button type="button" onClick={() => setShowSignIn(true)} className="text-sm font-semibold text-muted underline">
               You don get account before? Sign in
@@ -207,7 +104,6 @@ function AccountCard({ user }: { user: User | null }) {
             <div className="flex flex-col gap-2 rounded-2xl bg-background p-3">
               <p className="text-sm text-muted">The guest games on this phone no go follow you into that account.</p>
               <SecondaryButton onClick={() => act(signInWithGoogle)}>Sign in with Google</SecondaryButton>
-              <SecondaryButton onClick={() => setPhoneFor("signin")}>Sign in with phone number</SecondaryButton>
             </div>
           )}
         </>
@@ -215,10 +111,7 @@ function AccountCard({ user }: { user: User | null }) {
         <>
           <ul className="flex flex-col gap-1">
             {linked.google && <li>✅ Google: <b>{linked.google}</b></li>}
-            {linked.phone && <li>✅ Phone: <b>{linked.phone}</b></li>}
           </ul>
-          {!linked.google && <SecondaryButton onClick={() => act(linkGoogle)}>Add Google too</SecondaryButton>}
-          {!linked.phone && <SecondaryButton onClick={() => setPhoneFor("link")}>Add phone number too</SecondaryButton>}
           <button type="button" onClick={() => act(signOut)} className="text-sm font-semibold text-muted underline">
             Sign out
           </button>

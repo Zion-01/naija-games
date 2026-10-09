@@ -186,6 +186,9 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
     devDependencies:
       '@colyseus/sdk':
         specifier: ^0.18.5
@@ -193,9 +196,6 @@ importers:
       '@types/node':
         specifier: ^26.6.4
         version: 26.6.4
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

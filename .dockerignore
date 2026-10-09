@@ -1,0 +1,11 @@
+**/node_modules
+**/.next
+**/.env
+**/.env*.local
+.git
+.github
+.claude
+apps/web
+supabase
+docs
+coverage

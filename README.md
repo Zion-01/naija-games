@@ -54,7 +54,7 @@ Copy `apps/web/.env.example` and `apps/server/.env.example` to `.env.local` in t
 ## Accounts (Supabase)
 
 - **Everyone online has an account.** The first time you play online, the web app signs you in anonymously (a guest) and sends the access token to the game server. The server checks it against the project's published signing keys (`apps/server/src/auth.ts`) and seats you by user id.
-- **Save your account** on `/profile` by linking Google or a phone number (SMS code). Your games stay with you. On a new phone, **Sign in** instead.
+- **Save your account** on `/profile` by linking Google. Your games stay with you. On a new phone, **Sign in** with Google instead. (There's no phone-number sign-in.)
 - **Results**: when an online game ends, the server calls the `record_match` database function with the secret key (`apps/server/src/results.ts`). Players can read only the games they sat in (row-level security). `/profile` lists your recent games.
 - **Without Supabase** (env vars unset, as in `pnpm e2e`), the server falls back to a random device guest id and saves nothing.
 - **Ratings**: each player has an Elo rating per game, starting at 1200, in the `ratings` table (public). `record_match` updates it in the same transaction as the result. Only games between players with accounts move ratings; games against computer seats only count towards wins and losses. With more than two players every pair is scored like a 1v1. A player who leaves mid-game counts as last. K is 40 for the first 20 rated games, then 20, and ratings never drop below 100. The game-over screen shows each player's change, and `/profile` shows your ratings and all-time record.
@@ -62,6 +62,21 @@ Copy `apps/web/.env.example` and `apps/server/.env.example` to `.env.local` in t
 - Schema: `supabase/migrations/`. SQL tests: `supabase/tests/` (run them against a database; they roll back). Tables: `profiles` (nickname, public), `matches` and `match_players` (readable by the players in them), `ratings` (public). Dashboard settings the code relies on are listed under KI-22 in `docs/KNOWN_ISSUES.md`.
 
 The server also serves `GET /rooms/:code` (public room facts for previews) and `GET /health`.
+
+## Deploying
+
+The web app goes on Vercel and the game server on Render (free plan). Do these in order; each step needs the one before.
+
+1. **Game server on Render.** In the Render dashboard: New → Blueprint → pick this repository. It reads `render.yaml` (Docker, free plan, Frankfurt, health check `/health`). Paste `SUPABASE_SECRET_KEY` when asked. Note the URL it gets, e.g. `https://naija-games-server.onrender.com`, and check `/health` answers `{"ok":true}`.
+   - The free plan sleeps after 15 minutes with no requests or WebSocket messages and takes up to a minute to wake. Games in progress keep it awake, players in a room send a `ping` every 4 minutes (so a waiting room survives), and the web app wakes it as soon as someone picks Online. For always-on, change `plan: free` to `plan: starter` ($7/month).
+2. **Web app on Vercel.** Import the repository with root directory `apps/web` (Vercel detects Next.js and pnpm). Set these environment variables, then deploy:
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (as in `apps/web/.env.example`)
+   - `NEXT_PUBLIC_GAME_SERVER_URL` and `GAME_SERVER_URL`: the Render URL from step 1
+3. **Supabase URLs.** Authentication → URL Configuration: set the Site URL to the Vercel address and add `https://<that address>/profile` to Redirect URLs (Google sign-in comes back there).
+4. **CAPTCHA (in this order).** Create a Turnstile widget in the Cloudflare dashboard for the Vercel domain. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` on Vercel and redeploy. *Then* in Supabase → Authentication → Attack Protection, enable CAPTCHA with Turnstile and the widget's secret key. Doing it the other way round breaks guest sign-in until the site key is live.
+5. **Try it on a real phone** (KI-4): open the site, start an online game, send the WhatsApp invite to another phone and play it out.
+
+To check the server image locally (needs Docker): `docker build -f apps/server/Dockerfile -t naija-games-server .` from the repository root.
 
 ## Engine
 

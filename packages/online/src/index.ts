@@ -12,6 +12,11 @@ export const TURN_SECONDS: Record<GameId, number> = { whot: 20, ayo: 30 };
 /** Seconds a dropped player has to come back before the computer takes their seat. */
 export const RECONNECT_SECONDS = 60;
 export const MAX_SPECTATORS = 8;
+/**
+ * How often a client in a room sends `ping`. Render's free plan stops the server after 15 minutes without an incoming
+ * request or WebSocket message, which would end a room whose host is still waiting for their guy to tap the link.
+ */
+export const KEEPALIVE_MS = 4 * 60 * 1000;
 
 /** Quick-match: after this long in the queue the client offers "Play the computer" (and keeps searching). */
 export const QUICK_OFFER_SECONDS = 20;
@@ -129,13 +134,14 @@ export type RoomSummary = {
 
 /**
  * Message types, by direction. Client → server: `move` (a wire move), `start` (host only, before the game:
- * fill the open seats with the computer and deal), `rematch`, and in the queue room `solo` (stop waiting and
- * play the computer). Server → client: `snapshot`, `error`, and in the queue room `matched`.
+ * fill the open seats with the computer and deal), `rematch`, `ping` (keepalive, ignored), and in the queue room
+ * `solo` (stop waiting and play the computer). Server → client: `snapshot`, `error`, and in the queue room `matched`.
  */
 export const MSG = {
   move: 'move',
   start: 'start',
   rematch: 'rematch',
+  ping: 'ping',
   solo: 'solo',
   snapshot: 'snapshot',
   error: 'error',

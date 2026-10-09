@@ -6,7 +6,7 @@ import { QUICK_OFFER_SECONDS, type GameId, type WhotRoomOptions } from "@naija/o
 import { PrimaryButton } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
 import { AccountError } from "@/lib/account";
-import { Search, createRoom } from "@/lib/online";
+import { Search, createRoom, wakeServer } from "@/lib/online";
 import { NicknameField, useNickname } from "./Nickname";
 
 /** "Invite your guy" opens a private room and goes to its /play/CODE page; "Find opponent" joins the quick-match queue. */
@@ -16,6 +16,9 @@ export function OnlineSetup({ game, whot }: { game: GameId; whot?: WhotRoomOptio
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState<Search | null>(null);
+
+  // Picking Online is the hint: start waking a sleeping server while they type their name.
+  useEffect(wakeServer, []);
 
   function named() {
     if (nickname.trim()) return true;

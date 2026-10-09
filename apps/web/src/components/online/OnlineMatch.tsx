@@ -5,7 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { inviteLine, normalizeCode, type Snapshot } from "@naija/online";
 import { GameHeader, PrimaryButton, Toasts, useCallouts } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
-import { connect, ensureGuest, guest, inviteUrl, registry, whatsappLink, type Connection, type ConnectionState } from "@/lib/online";
+import { connect, ensureGuest, guest, inviteUrl, registry, wakeServer, whatsappLink, type Connection, type ConnectionState } from "@/lib/online";
 import { NicknameField, useNickname } from "./Nickname";
 import { OnlineAyo } from "./OnlineAyo";
 import { OnlineWhot } from "./OnlineWhot";
@@ -39,6 +39,7 @@ function JoinGate({ code, known, onJoin }: { code: string; known: string; onJoin
   useEffect(() => {
     if (live && known) onJoin();
   }, [live, known, onJoin]);
+  useEffect(wakeServer, []);
 
   function join() {
     if (!nickname.trim()) return;

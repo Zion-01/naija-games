@@ -1,10 +1,11 @@
 import { createClient, type AuthError, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { useSyncExternalStore } from "react";
 import { cleanNickname } from "@naija/online";
+import { captchaToken } from "./captcha";
 
 /**
  * Accounts (Phase 4). Everyone who plays online gets a Supabase session: first an anonymous one (a guest), which
- * they can later save by linking Google or a phone number. The game server identifies players by the session's
+ * they can later save by linking Google. The game server identifies players by the session's
  * access token, and saves online results against the user id.
  *
  * Without NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (local development, e2e tests) there are
@@ -47,7 +48,7 @@ function start() {
 
 const serverState: AccountState = { status: "loading" };
 
-/** The signed-in user (an anonymous guest until they link Google or a phone). */
+/** The signed-in user (an anonymous guest until they link Google). */
 export function useAccount(): AccountState {
   return useSyncExternalStore(
     (listener) => {
@@ -68,12 +69,9 @@ export function isGuest(user: User | null): boolean {
 }
 
 /** How the account is saved, for the profile page. */
-export function linkedWith(user: User | null): { google: string | null; phone: string | null } {
+export function linkedWith(user: User | null): { google: string | null } {
   const google = user?.identities?.find((i) => i.provider === "google");
-  return {
-    google: google ? String(google.identity_data?.email ?? "Google") : null,
-    phone: user?.phone ? `+${user.phone.replace(/^\+/, "")}` : null,
-  };
+  return { google: google ? String(google.identity_data?.email ?? "Google") : null };
 }
 
 /**
@@ -88,7 +86,14 @@ export async function accessToken(nickname: string): Promise<string | null> {
     void saveNickname(nickname);
     return data.session.access_token;
   }
-  const { data: signed, error } = await sb.auth.signInAnonymously({ options: { data: { nickname: cleanNickname(nickname) } } });
+  let token: string | undefined;
+  try {
+    token = await captchaToken();
+  } catch (e) {
+    console.error(e);
+    throw new AccountError("We no fit confirm say you be human. Refresh the page and try again.");
+  }
+  const { data: signed, error } = await sb.auth.signInAnonymously({ options: { data: { nickname: cleanNickname(nickname) }, captchaToken: token } });
   if (error || !signed.session) throw friendly(error, "We no fit sign you in. Check your network and try again.") ?? new AccountError("We no fit sign you in.");
   lastSavedNickname = cleanNickname(nickname);
   return signed.session.access_token;
@@ -112,38 +117,18 @@ export async function saveNickname(raw: string) {
   }
 }
 
-/** Nigerian numbers as people type them (0803…, 803…, 234803…, +234 803…) → E.164. Other countries need a leading +. */
-export function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/[\s()-]/g, "");
-  let e164: string;
-  if (digits.startsWith("+")) e164 = digits;
-  else if (digits.startsWith("234")) e164 = `+${digits}`;
-  else if (digits.startsWith("0")) e164 = `+234${digits.slice(1)}`;
-  else e164 = `+234${digits}`;
-  if (!/^\+\d{8,15}$/.test(e164)) return null;
-  if (e164.startsWith("+234") && e164.length !== 14) return null;
-  return e164;
-}
-
 function friendly(error: AuthError | null, fallback: string): AccountError | null {
   if (!error) return null;
   console.error(error);
   switch (error.code) {
     case "identity_already_exists":
       return new AccountError("That Google account don already get its own profile. Sign in with it instead.");
-    case "phone_exists":
-      return new AccountError("That number don already get its own profile. Sign in with it instead.");
-    case "otp_expired":
-    case "invalid_credentials":
-      return new AccountError("That code no correct or e don expire. Try again.");
-    case "over_sms_send_rate_limit":
     case "over_request_rate_limit":
       return new AccountError("Too many tries. Wait small, then try again.");
-    case "sms_send_failed":
-      return new AccountError("We no fit send the SMS. Check the number.");
+    case "captcha_failed":
+      return new AccountError("We no fit confirm say you be human. Refresh the page and try again.");
     case "manual_linking_disabled":
     case "provider_disabled":
-    case "phone_provider_disabled":
     case "anonymous_provider_disabled":
       return new AccountError("This sign-in option never ready yet. Try another one.");
     default:
@@ -173,31 +158,6 @@ export async function linkGoogle() {
 export async function signInWithGoogle() {
   const { error } = await need().auth.signInWithOAuth({ provider: "google", options: { redirectTo: back() } });
   const e = friendly(error, "Google sign-in no work. Try again.");
-  if (e) throw e;
-}
-
-/**
- * Phone, step 1: texts a code. `link` saves the current guest with this number; otherwise it signs in to the
- * account that already has it.
- */
-export async function sendPhoneCode(phone: string, link: boolean) {
-  const sb = need();
-  if (link) {
-    if (!(await sb.auth.getSession()).data.session) await accessToken("");
-    const { error } = await sb.auth.updateUser({ phone });
-    const e = friendly(error, "We no fit send the code. Try again.");
-    if (e) throw e;
-  } else {
-    const { error } = await sb.auth.signInWithOtp({ phone, options: { shouldCreateUser: false } });
-    const e = friendly(error, "We no fit send the code. Is this number saved with us?");
-    if (e) throw e;
-  }
-}
-
-/** Phone, step 2: checks the code from the SMS. */
-export async function verifyPhoneCode(phone: string, token: string, link: boolean) {
-  const { error } = await need().auth.verifyOtp({ phone, token: token.trim(), type: link ? "phone_change" : "sms" });
-  const e = friendly(error, "That code no work. Try again.");
   if (e) throw e;
 }
 
