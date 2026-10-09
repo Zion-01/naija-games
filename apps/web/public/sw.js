@@ -1,6 +1,6 @@
 // Offline support for the PWA: both games run fully in the browser, so caching the pages and
 // their static assets is enough to play with no network.
-const CACHE = "naija-games-v1";
+const CACHE = "naija-games-v2";
 const PRECACHE = ["/", "/whot", "/ayo", "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -50,6 +50,8 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  // Online rooms need the network anyway, and caching every invite page would only fill the cache.
+  if (url.pathname.startsWith("/play")) return;
   // Build assets are content-hashed, so a cached copy never goes stale.
   if (url.pathname.startsWith("/_next/static/")) event.respondWith(cacheFirst(request));
   else event.respondWith(networkFirst(request));

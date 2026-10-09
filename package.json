@@ -6,6 +6,7 @@
     "dev": "pnpm -r --parallel --filter ./apps/* dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "e2e": "pnpm --filter web e2e"
   }
 }

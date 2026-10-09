@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ayo, createRng, whot, type Rng } from "@naija/engine";
-import { sowFrames } from "../src/lib/ayo-session";
+import type { Snapshot } from "@naija/online";
+import { ayoCallouts, sowFrames } from "../src/lib/ayo-session";
+import { isNextMove, secondsLeft } from "../src/lib/online";
+import { LINES } from "../src/lib/voice";
 import { nextAiAction, whotCallouts, type WhotSeat } from "../src/lib/whot-session";
 
 const card = (shape: whot.Shape, number: number): whot.Card => ({ id: `${shape}-${number}`, shape, number });
@@ -86,5 +89,53 @@ describe("sowFrames", () => {
     const frames = sowFrames(pits, 0);
     expect(frames.slice(1).every((f) => f.landed !== 0)).toBe(true);
     expect(frames.at(-1)!.pits.reduce((a, b) => a + b, 0)).toBe(18);
+  });
+});
+
+describe("online helpers", () => {
+  const snap = (round: number, moves: number, last: unknown = { type: "draw", player: 0 }) =>
+    ({ round, moves, last }) as unknown as Snapshot;
+
+  it("treats only the very next move of the same round as new", () => {
+    expect(isNextMove(null, snap(0, 1))).toBe(false);
+    expect(isNextMove(snap(0, 1), snap(0, 2))).toBe(true);
+    expect(isNextMove(snap(0, 1), snap(0, 1))).toBe(false); // a join or a drop
+    expect(isNextMove(snap(0, 1), snap(0, 3))).toBe(false); // missed some while reconnecting
+    expect(isNextMove(snap(0, 5), snap(1, 6))).toBe(false); // rematch
+    expect(isNextMove(snap(0, 1), snap(0, 2, null))).toBe(false);
+  });
+
+  it("corrects the turn clock for server clock skew", () => {
+    // Server says 20s left; our clock is 5s ahead of it and 3.2s have passed since the snapshot arrived.
+    expect(secondsLeft(120_000, 100_000, 105_000, 108_200)).toBe(17);
+    expect(secondsLeft(120_000, 100_000, 105_000, 200_000)).toBe(0);
+    expect(secondsLeft(null, 100_000, 105_000, 105_000)).toBeNull();
+  });
+});
+
+describe("callouts from server views", () => {
+  it("works on redacted views and speaks from the viewer's seat", () => {
+    const s0 = table([[card("circle", 9)], [card("circle", 3), card("star", 4)]], card("circle", 4));
+    const move = { type: "play", player: 0, cardId: "circle-9" } as const;
+    const s1 = play(s0, move);
+    const online: WhotSeat[] = [
+      { name: "Tunde", kind: "human" },
+      { name: "Bisi", kind: "human" },
+    ];
+    const asSeen = (seat: number) => whotCallouts(whot.viewFor(s0, seat), move, whot.viewFor(s1, seat), online, seat).at(-1)!.text;
+    expect(asSeen(0)).toBe("Check up! 🎉");
+    expect(asSeen(1)).toBe("E don cast 😩");
+    expect(whotCallouts(whot.viewFor(s0, -1), move, whot.viewFor(s1, -1), online, null).at(-1)!.text).toContain("Tunde don check up");
+  });
+
+  it("calls Ayo captures and the result for the viewer", () => {
+    const prev = { ...ayo.initialState(), pits: [0, 0, 0, 0, 0, 2, 1, 1, 5, 0, 0, 0], stores: [21, 18] as [number, number] };
+    const move = { type: "sow", player: 0, pit: 5 } as const;
+    const r = ayo.applyMove(prev, move);
+    if (!r.ok) throw new Error(r.error);
+    const texts = (me: 0 | 1 | null) => ayoCallouts(prev, move, r.state, ["Ada", "Emeka"], me).map((c) => c.text);
+    expect(texts(0)[0]).toBe("Ada chop 4!");
+    expect(texts(0)).toContain(LINES.youWin);
+    expect(texts(1)).toContain(LINES.youLose);
   });
 });
