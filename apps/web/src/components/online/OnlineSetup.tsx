@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { GameId, WhotRoomOptions } from "@naija/online";
 import { PrimaryButton } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
+import { AccountError } from "@/lib/account";
 import { createRoom } from "@/lib/online";
 import { NicknameField, useNickname } from "./Nickname";
 
@@ -26,8 +27,8 @@ export function OnlineSetup({ game, whot }: { game: GameId; whot?: WhotRoomOptio
     try {
       const code = await createRoom(game, nickname, whot);
       router.push(`/play/${code}`);
-    } catch {
-      setError("We no fit reach the game server. Check your network and try again.");
+    } catch (e) {
+      setError(e instanceof AccountError ? e.message : "We no fit reach the game server. Check your network and try again.");
       setBusy(false);
     }
   }

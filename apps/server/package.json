@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env.local src/index.ts",
+    "start": "tsx --env-file-if-exists=.env.local src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -21,6 +21,7 @@
     "@colyseus/schema": "^5.0.36",
     "@colyseus/ws-transport": "^0.18.4",
     "@naija/engine": "workspace:*",
-    "@naija/online": "workspace:*"
+    "@naija/online": "workspace:*",
+    "jose": "^6.2.12"
   }
 }

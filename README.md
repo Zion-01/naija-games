@@ -12,6 +12,7 @@ packages/online/   The client ↔ server protocol: snapshot and room types, move
 apps/web/          Next.js 16 (App Router, Tailwind 4). Lobby, /whot and /ayo (computer, pass-and-play or online),
                    /play/CODE for private online rooms. Offline PWA.
 apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport): WhotRoom and AyoRoom run the engine.
+supabase/          SQL migrations for the Supabase project (accounts, saved results).
 ```
 
 ## Commands
@@ -32,7 +33,7 @@ Pick **🌍 Online** in a game's setup, enter a nickname and tap **Invite your g
 
 - **The server is authoritative.** Clients send moves without a player number; the server stamps the sender's seat, checks the move with the engine, and sends each client a snapshot built from `viewFor` for their seat. Nobody receives another player's cards.
 - **Turn timer**: Whot 20s, Ayo 30s. When it runs out, the server plays an Easy-AI move for you.
-- **Drops**: the SDK reconnects by itself. After 60s away, the computer (Medium) takes the seat. Opening the link again on the same device gives you your seat back (each device keeps a random guest id).
+- **Drops**: the SDK reconnects by itself. After 60s away, the computer (Medium) takes the seat. Opening the link again while signed in to the same account gives you your seat back.
 - **Spectators**: anyone who opens a full or running room watches without a hand.
 - **Rematch**: once every human in the room asks, the next game deals with the next player starting.
 - Moves are rate-limited (10 per 2s per client, and Colyseus disconnects anything over 30 messages/s).
@@ -42,6 +43,19 @@ Pick **🌍 Online** in a game's setup, enter a nickname and tap **Invite your g
 | `NEXT_PUBLIC_GAME_SERVER_URL` | web (browser) | `http(s)://<page host>:2567` |
 | `GAME_SERVER_URL` | web (server side, for link previews) | `NEXT_PUBLIC_GAME_SERVER_URL`, then `http://localhost:2567` |
 | `PORT` | server | `2567` |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | web | unset: no accounts |
+| `SUPABASE_URL` | server | unset: guest ids (refused when `NODE_ENV=production`) |
+| `SUPABASE_SECRET_KEY` | server (never the web app) | unset: results aren't saved |
+
+Copy `apps/web/.env.example` and `apps/server/.env.example` to `.env.local` in the same folder. The server's `dev` and `start` scripts load its `.env.local`.
+
+## Accounts (Supabase)
+
+- **Everyone online has an account.** The first time you play online, the web app signs you in anonymously (a guest) and sends the access token to the game server. The server checks it against the project's published signing keys (`apps/server/src/auth.ts`) and seats you by user id.
+- **Save your account** on `/profile` by linking Google or a phone number (SMS code). Your games stay with you. On a new phone, **Sign in** instead.
+- **Results**: when an online game ends, the server calls the `record_match` database function with the secret key (`apps/server/src/results.ts`). Players can read only the games they sat in (row-level security). `/profile` lists your recent games.
+- **Without Supabase** (env vars unset, as in `pnpm e2e`), the server falls back to a random device guest id and saves nothing.
+- Schema: `supabase/migrations/`. Tables: `profiles` (nickname, public), `matches` and `match_players` (readable by the players in them). Dashboard settings the code relies on are listed under KI-22 in `docs/KNOWN_ISSUES.md`.
 
 The server also serves `GET /rooms/:code` (public room facts for previews) and `GET /health`.
 

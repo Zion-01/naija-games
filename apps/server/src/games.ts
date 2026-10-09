@@ -1,6 +1,8 @@
 import { ayo, whot, type Difficulty, type MoveResult, type Rng } from '@naija/engine';
 import { parseAyoMove, parseWhotMove, type GameId, type WhotRoomOptions } from '@naija/online';
 
+export type GameResult = 'won' | 'lost' | 'drawn';
+
 /** What a `Match` needs from a game. Both games go through the same engine contract. */
 export type GameRules<S, M, V> = {
   id: GameId;
@@ -10,6 +12,8 @@ export type GameRules<S, M, V> = {
   apply(s: S, move: M): MoveResult<S>;
   current(s: S): number;
   over(s: S): boolean;
+  /** Each seat's result once the game is over. */
+  results(s: S): GameResult[];
   view(s: S, seat: number): V;
   parseMove(raw: unknown, seat: number): M | null;
   /** The move the server plays for a seat whose turn it is (and the AI only sees that seat's view). */
@@ -32,6 +36,8 @@ export function whotRules(opts: Partial<WhotRoomOptions> = {}): GameRules<whot.W
     apply: whot.applyMove,
     current: (s) => s.current,
     over: (s) => s.over,
+    // A tie on the count shares the win, so those seats draw.
+    results: (s) => s.hands.map((_, i) => (!s.winners.includes(i) ? 'lost' : s.winners.length > 1 ? 'drawn' : 'won')),
     view: whot.viewFor,
     parseMove: (raw, seat) => parseWhotMove(raw, seat, players),
     choose: (s, seat, difficulty, rng) => whot.chooseWhotMove(whot.viewFor(s, seat), difficulty, rng),
@@ -52,6 +58,7 @@ export function ayoRules(): GameRules<ayo.AyoState, ayo.AyoMove, ayo.AyoState> {
     apply: ayo.applyMove,
     current: (s) => s.current,
     over: (s) => s.over,
+    results: (s) => [0, 1].map((i) => (s.winner === null ? 'drawn' : s.winner === i ? 'won' : 'lost')),
     // Ayo has no hidden information, so every seat (and every spectator) sees the whole board.
     view: (s) => s,
     parseMove: parseAyoMove,

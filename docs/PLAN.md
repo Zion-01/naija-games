@@ -63,9 +63,9 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 - Guest identity through Supabase anonymous sign-in (with a nickname) and a turn timer (Whot 20s, Ayo 30s; on timeout the server auto-plays the Easy-AI move).
 - 60s window to reconnect, after which the AI takes the seat. Spectators are allowed in private rooms. Moves are rate-limited and checked by the engine.
 
-> Status: Phases 0–3 are done. Gaps left in Phase 3 (Supabase sign-in, deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+> Status: Phases 0–3 are done. Gaps left in Phase 3 (deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
-**Phase 4: Accounts and competition (4–5 days).**
+**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings, **4c** quick-match, **4d** weekly leaderboards.
 - Upgrade a guest to Google or phone OTP and keep their history. Profiles with an Elo rating per game.
 - Quick-match queue (matched by rating), and weekly leaderboards ("Oga of the Week").
 - Supabase tables: `profiles`, `matches`, `match_players`, `ratings`, with row-level security. The server writes results using the service key.

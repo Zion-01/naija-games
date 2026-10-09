@@ -50,7 +50,12 @@ export default function Home() {
             <h1 className="text-4xl font-black tracking-tight">Naija Games</h1>
             <p className="mt-1 text-lg text-muted">Oya, pick your game.</p>
           </div>
-          <SettingsToggles />
+          <div className="flex items-center gap-1">
+            <SettingsToggles />
+            <Link href="/profile" aria-label="Your profile" className="grid size-9 place-items-center rounded-full text-xl hover:bg-surface">
+              👤
+            </Link>
+          </div>
         </header>
         <div className="kente rounded-full" />
         <ul className="flex flex-col gap-4">

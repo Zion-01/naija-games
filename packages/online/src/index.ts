@@ -54,8 +54,11 @@ export type RoomStatus = 'waiting' | 'playing' | 'over';
 
 export type WhotRoomOptions = { players: number; handSize: number };
 
-/** Sent with `create` and `joinById`. `guestId` is a random secret kept on the device, so a player can reclaim their seat. */
-export type JoinOptions = { nickname: string; guestId: string; spectate?: boolean };
+/**
+ * Sent with `create` and `joinById`. Players are identified by their Supabase access token (`client.auth.token`).
+ * `guestId` is only used by a server running without Supabase (development): a random device secret that owns the seat.
+ */
+export type JoinOptions = { nickname: string; guestId?: string; spectate?: boolean };
 export type CreateOptions = JoinOptions & { whot?: Partial<WhotRoomOptions> };
 
 export type WhotWireMove =

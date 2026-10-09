@@ -1,7 +1,12 @@
-import { Room, ServerError, matchMaker, type Client } from '@colyseus/core';
+import { Room, ServerError, matchMaker, type AuthContext, type Client } from '@colyseus/core';
 import { MAX_SPECTATORS, MSG, RECONNECT_SECONDS, randomCode, type CreateOptions, type JoinOptions } from '@naija/online';
+import { AuthError, guestAuth, type Authenticator, type Identity } from './auth';
 import { ayoRules, whotRules, type AnyRules } from './games';
 import { Match } from './match';
+import type { ResultSink } from './results';
+
+/** How rooms identify players and where finished games go. Set once by `createServer`. */
+export const services: { auth: Authenticator; results: ResultSink | null } = { auth: guestAuth, results: null };
 
 /**
  * Private rooms keyed by their invite code, so the HTTP API can describe a room for link previews.
@@ -14,14 +19,21 @@ abstract class GameRoom extends Room {
 
   protected abstract rules(options: CreateOptions): AnyRules;
 
-  async onCreate(options: CreateOptions = { nickname: '', guestId: '' }) {
+  async onCreate(options: CreateOptions = { nickname: '' }) {
     // The room id doubles as the invite code: /play/ABCD joins room ABCD.
     this.roomId = await uniqueCode();
     const rules = this.rules(options);
     this.maxClients = rules.seats + MAX_SPECTATORS;
     // Enough for fast tapping and catches; anything above this is a broken or abusive client.
     this.maxMessagesPerSecond = 30;
-    this.match = new Match(this.roomId, rules, (Date.now() ^ (Math.random() * 2 ** 31)) >>> 0, () => this.sendSnapshots());
+    const seed = (Date.now() ^ (Math.random() * 2 ** 31)) >>> 0;
+    this.match = new Match(this.roomId, rules, seed, () => this.sendSnapshots(), {
+      onOver: (record) => {
+        const save = services.results;
+        if (!save || !record.players.some((p) => p.userId)) return;
+        save(record).catch((e: unknown) => console.error(`[${this.roomId}] saving the result failed:`, e));
+      },
+    });
     matches.set(this.roomId, this.match);
     // Invite-only: never handed out by joinOrCreate, only joinable by code.
     await this.setPrivate(true);
@@ -37,9 +49,17 @@ abstract class GameRoom extends Room {
     this.onMessage(MSG.rematch, (client) => this.match.requestRematch(client.sessionId));
   }
 
+  async onAuth(_client: Client, options: Partial<JoinOptions> = {}, context: AuthContext): Promise<Identity> {
+    try {
+      return await services.auth(context.token, options);
+    } catch (e) {
+      throw new ServerError(401, e instanceof AuthError ? e.message : 'Sign in first');
+    }
+  }
+
   onJoin(client: Client, options: Partial<JoinOptions> = {}) {
     try {
-      this.match.join(client.sessionId, options);
+      this.match.join(client.sessionId, options, client.auth as Identity);
     } catch (e) {
       throw new ServerError(4000, (e as Error).message);
     }
