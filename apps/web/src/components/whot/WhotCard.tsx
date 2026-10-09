@@ -63,18 +63,17 @@ export function WhotCard({
   );
 }
 
-export function CardBack({ size = "md", className = "" }: { size?: Size; className?: string }) {
+/** `look` draws a specific card back (style previews); otherwise it's the one chosen in /style. */
+export function CardBack({ size = "md", className = "", look }: { size?: Size; className?: string; look?: { color: string; pattern: string } }) {
   return (
     <div
       className={`relative ${SIZES[size]} shrink-0 overflow-hidden rounded-lg border-2 border-[var(--card-face)] bg-[var(--card-back)] shadow-md ${className}`}
+      style={look && ({ "--card-back": look.color, "--card-back-pattern": look.pattern } as React.CSSProperties)}
       aria-hidden
     >
       <div
         className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(45deg, #fff 0 2px, transparent 2px 8px), repeating-linear-gradient(-45deg, #fff 0 2px, transparent 2px 8px)",
-        }}
+        style={{ background: "var(--card-back-pattern)" }}
       />
       {size !== "sm" && (
         <span className="absolute inset-0 grid place-items-center text-xs font-black tracking-widest text-[var(--card-face)] [writing-mode:vertical-rl]">

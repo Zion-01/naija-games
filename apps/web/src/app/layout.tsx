@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CosmeticsStyle } from "@/components/CosmeticsStyle";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <ServiceWorker />
+        <CosmeticsStyle />
       </body>
     </html>
   );

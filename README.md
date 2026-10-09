@@ -10,7 +10,7 @@ The full roadmap is in [docs/PLAN.md](docs/PLAN.md). Open issues and loose ends 
 packages/engine/   Pure TypeScript rules + AI for both games (no I/O). Shared by the web app and the server.
 packages/online/   The client ↔ server protocol: snapshot and room types, move validation, room codes, timers.
 apps/web/          Next.js 16 (App Router, Tailwind 4). Lobby, /whot and /ayo (computer, pass-and-play or online),
-                   /play/CODE for private online rooms. Offline PWA.
+                   /play/CODE for private online rooms, /style for card backs and Ayo boards. Offline PWA.
 apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport): WhotRoom and AyoRoom run the engine.
 supabase/          SQL migrations for the Supabase project (accounts, saved results).
 ```
@@ -26,6 +26,10 @@ pnpm e2e          # Playwright: two browsers share a private room (starts the se
 ```
 
 Playwright needs a Chromium: run `pnpm --filter web exec playwright install chromium` once, or point `PW_CHROMIUM` at an installed one.
+
+## Your table
+
+`/style` (🎨 in the lobby) picks a Whot card back and an Ayo board. The first ones are free; the rest unlock with wins against the computer, counted on the device (`src/lib/cosmetics.ts`). There's no shop and nothing random, and only you see your choice: it just sets CSS variables on the page.
 
 ## Online play
 

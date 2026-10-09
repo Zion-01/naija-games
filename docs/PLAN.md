@@ -80,7 +80,7 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
   - The all-time board reads `ratings` (public) with `profiles(nickname)`, players with at least one rated game.
 - Supabase tables: `profiles`, `matches`, `match_players`, `ratings`, with row-level security. The server writes results using the service key.
 
-**Phase 5: Polish and launch (ongoing).** One PR each: 5a emotes and banter stickers in matches (done), 5b cosmetic card backs and ayo boards (ads or monetisation later, no gambling mechanics), 5c privacy-friendly analytics, and 5d load testing a single Colyseus node.
+**Phase 5: Polish and launch (ongoing).** One PR each: 5a emotes and banter stickers in matches (done), 5b cosmetic card backs and ayo boards, unlocked by wins (done; ads or monetisation later, no gambling mechanics), 5c privacy-friendly analytics, and 5d load testing a single Colyseus node.
 
 ## Reuse
 Mini Arcade (`mobile-apps/mini-games`) is React Native, so its code doesn't carry over directly. We copy its patterns:
