@@ -59,7 +59,9 @@ export function OnlineWhot({ snap, conn, push }: { snap: Snapshot<"whot">; conn:
         thinking={thinking}
         handLabel="Your cards"
         secondsLeft={seconds}
-        onPlay={(cardId, lastCard, callShape) => send({ type: "play", cardId, lastCard, ...(callShape ? { callShape } : {}) })}
+        onPlay={(cardId, stack, lastCard, callShape) =>
+          send({ type: "play", cardId, lastCard, ...(stack.length ? { stack } : {}), ...(callShape ? { callShape } : {}) })
+        }
         onDraw={() => send({ type: "draw" })}
         onCatch={(target) => send({ type: "catch", target })}
         onInvalid={(text) => push([{ text, sfx: "error", speak: false, tone: "bad" }])}

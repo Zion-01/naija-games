@@ -11,6 +11,7 @@ import {
   cardValue,
   createDeck,
   isSpecial,
+  type CallableShape,
   type Card,
 } from './deck';
 import type { WhotMove, WhotOptions, WhotState, WhotView } from './state';
@@ -20,6 +21,8 @@ import type { WhotMove, WhotOptions, WhotState, WhotView } from './state';
  * 1 Hold On (play again) · 2 Pick Two · 5 Pick Three (defend with the same number, penalties stack)
  * 8 Suspension (skip next) · 14 General Market (everyone else picks 1, you play again)
  * 20 Whot (wild, call a shape). Forget to call "Last card" and anyone can catch you for 2.
+ * You can stack several cards of the same number in one turn; each one counts: two Pick Twos is pick four,
+ * two General Markets is everyone picks two, two Suspensions skip two players (never past you).
  * If someone has to draw from an empty market, hands are counted: lowest total wins, stars double.
  */
 export function initialState(opts: WhotOptions & { firstPlayer?: number }, seed: number): WhotState {
@@ -73,13 +76,32 @@ export function legalMoves(s: WhotState, player: number): WhotMove[] {
   if (player !== s.current) return moves;
 
   const hand = s.hands[player]!;
-  const lastCard = hand.length === 2;
+  let whotLed = false;
   for (const card of hand) {
     if (!canPlay(s, card)) continue;
+    const others = hand.filter((c) => c !== card && c.number === card.number);
     if (card.number === WHOT) {
-      for (const callShape of CALLABLE_SHAPES) moves.push({ type: 'play', player, cardId: card.id, callShape, lastCard });
-    } else {
-      moves.push({ type: 'play', player, cardId: card.id, lastCard });
+      // Whots are interchangeable, so one lead and stacks by size cover every option.
+      if (whotLed) continue;
+      whotLed = true;
+      for (let size = 0; size <= others.length; size++) {
+        const stack = others.slice(0, size).map((c) => c.id);
+        const lastCard = hand.length - 1 - size === 1;
+        for (const callShape of CALLABLE_SHAPES) moves.push(playMove(player, card.id, stack, lastCard, callShape));
+      }
+      continue;
+    }
+    // Only the lead (must match) and the last card (sets the new top) matter, so the middle stays in hand order.
+    for (const subset of subsets(others)) {
+      const lastCard = hand.length - 1 - subset.length === 1;
+      if (subset.length === 0) {
+        moves.push(playMove(player, card.id, [], lastCard));
+        continue;
+      }
+      for (const last of subset) {
+        const stack = [...subset.filter((c) => c !== last), last].map((c) => c.id);
+        moves.push(playMove(player, card.id, stack, lastCard));
+      }
     }
   }
   moves.push({ type: 'draw', player });
@@ -114,17 +136,26 @@ export function applyMove(state: WhotState, move: WhotMove): MoveResult<WhotStat
   }
 
   const hand = s.hands[move.player]!;
-  const index = hand.findIndex((c) => c.id === move.cardId);
-  if (index === -1) return fail('You no get that card');
-  const card = hand[index]!;
+  const ids = [move.cardId, ...(move.stack ?? [])];
+  if (new Set(ids).size !== ids.length) return fail('You no fit play one card twice');
+  const cards: Card[] = [];
+  for (const id of ids) {
+    const card = hand.find((c) => c.id === id);
+    if (!card) return fail('You no get that card');
+    cards.push(card);
+  }
+  const card = cards[0]!;
   if (!canPlay(s, card)) return fail(s.pending ? `Defend with ${s.pending.number} or go market` : 'That card no match');
+  if (cards.some((c) => c.number !== card.number)) return fail('Na only cards wey get the same number you fit stack');
   if (card.number === WHOT && !move.callShape) return fail('Call a shape for your Whot');
 
-  hand.splice(index, 1);
-  s.pile.push(card);
+  const count = cards.length;
+  s.hands[move.player] = hand.filter((c) => !cards.includes(c));
+  s.pile.push(...cards);
   s.calledShape = card.number === WHOT ? move.callShape! : null;
 
-  if (hand.length === 0) {
+  const left = s.hands[move.player]!.length;
+  if (left === 0) {
     s.over = true;
     s.winners = [move.player];
     s.endReason = 'checkup';
@@ -132,7 +163,7 @@ export function applyMove(state: WhotState, move: WhotMove): MoveResult<WhotStat
     s.vulnerable = null;
     return ok(s);
   }
-  if (hand.length === 1) s.vulnerable = move.lastCard ? null : move.player;
+  if (left === 1) s.vulnerable = move.lastCard ? null : move.player;
   else if (s.vulnerable === move.player) s.vulnerable = null;
 
   switch (card.number) {
@@ -143,17 +174,18 @@ export function applyMove(state: WhotState, move: WhotMove): MoveResult<WhotStat
     case PICK_THREE:
       s.pending = {
         number: card.number,
-        amount: (s.pending?.amount ?? 0) + (card.number === PICK_TWO ? 2 : 3),
+        amount: (s.pending?.amount ?? 0) + count * (card.number === PICK_TWO ? 2 : 3),
       };
       setCurrent(s, nextSeat(s, move.player, 1));
       break;
     case SUSPENSION:
-      setCurrent(s, nextSeat(s, move.player, 2));
+      // Each 8 skips one more player, but play never goes round past you.
+      setCurrent(s, nextSeat(s, move.player, Math.min(1 + count, s.players)));
       break;
     case GENERAL_MARKET:
       for (let step = 1; step < s.players; step++) {
         const other = nextSeat(s, move.player, step);
-        if (!draw(s, other, 1)) {
+        if (!draw(s, other, count)) {
           endByCount(s);
           return ok(s);
         }
@@ -184,6 +216,20 @@ export function viewFor(s: WhotState, me: number): WhotView {
 export const nextSeat = (s: Pick<WhotState, 'players'>, from: number, steps: number) => (from + steps) % s.players;
 
 export const handTotal = (hand: Card[]) => hand.reduce((sum, c) => sum + cardValue(c), 0);
+
+function playMove(player: number, cardId: string, stack: string[], lastCard: boolean, callShape?: CallableShape): WhotMove {
+  const move: WhotMove = { type: 'play', player, cardId, lastCard };
+  if (stack.length > 0) move.stack = stack;
+  if (callShape) move.callShape = callShape;
+  return move;
+}
+
+/** Every subset, in input order, smallest first. */
+function subsets<T>(items: T[]): T[][] {
+  const out: T[][] = [[]];
+  for (const item of items) for (const prev of out.slice()) out.push([...prev, item]);
+  return out.sort((a, b) => a.length - b.length);
+}
 
 /** Draws up to `n` cards. Returns false if the market ran out before all were drawn. */
 function draw(s: WhotState, player: number, n: number): boolean {

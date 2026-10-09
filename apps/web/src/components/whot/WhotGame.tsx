@@ -97,6 +97,10 @@ function WhotSetup({ config, onChange, onStart }: { config: Config; onChange: (c
           <li><b>1 Hold on</b>: play again. <b>8 Suspension</b>: next person skips.</li>
           <li><b>2 Pick two</b>, <b>5 Pick three</b>: defend with the same number to pass it on (e dey stack), or pick.</li>
           <li><b>14 General market</b>: everybody else picks one, and you play again.</li>
+          <li>
+            Get two or more of the same number? Tap one, tap the others to <b>stack</b> them, then Play. Every card counts: two
+            Pick Twos na pick four. The last one you tap goes on top.
+          </li>
           <li>Tap <b>Last card!</b> before you play down to one card, or anybody fit catch you for two.</li>
           <li>Finish your cards to check up. If market finish, lowest count wins (stars count double).</li>
         </ul>
@@ -173,7 +177,9 @@ function WhotTable({ config, seed, onRestart }: { config: Config; seed: number; 
         canCatch={canCatch}
         thinking={thinking}
         handLabel={config.mode === "pass" ? `${seats[me]!.name}'s cards` : "Your cards"}
-        onPlay={(cardId, lastCard, callShape) => apply({ type: "play", player: me, cardId, lastCard, callShape })}
+        onPlay={(cardId, stack, lastCard, callShape) =>
+          apply({ type: "play", player: me, cardId, lastCard, callShape, ...(stack.length ? { stack } : {}) })
+        }
         onDraw={() => apply({ type: "draw", player: me })}
         onCatch={(target) => apply({ type: "catch", player: me, target })}
         onInvalid={(text) => push([{ text, sfx: "error", speak: false, tone: "bad" }])}

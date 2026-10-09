@@ -44,9 +44,12 @@ function mediumMove(s: WhotState, me: number, rng: Rng): WhotMove | null {
   let best: WhotMove = plays[0]!;
   let bestScore = -Infinity;
   for (const move of plays) {
-    const card = cardOf(hand, move.cardId);
-    const rest = hand.filter((c) => c.id !== card.id);
-    let score = cardValue(card) * 0.5;
+    const played = [move.cardId, ...(move.stack ?? [])].map((id) => cardOf(hand, id));
+    const card = played[0]!;
+    const top = played[played.length - 1]!;
+    const count = played.length;
+    const rest = hand.filter((c) => !played.includes(c));
+    let score = played.reduce((sum, c) => sum + cardValue(c), 0) * 0.5;
 
     switch (card.number) {
       case WHOT:
@@ -55,7 +58,7 @@ function mediumMove(s: WhotState, me: number, rng: Rng): WhotMove | null {
         break;
       case PICK_TWO:
       case PICK_THREE:
-        score += s.pending ? 100 : nextCount <= 2 ? 40 : -10;
+        score += s.pending ? 100 : nextCount <= 2 ? 40 * count : -10;
         break;
       case SUSPENSION:
         score += nextCount <= 2 ? 35 : 5;
@@ -65,8 +68,11 @@ function mediumMove(s: WhotState, me: number, rng: Rng): WhotMove | null {
         score += rest.length > 0 ? 15 + (card.number === GENERAL_MARKET ? 5 * (s.players - 1) : 0) : 0;
         break;
     }
+    // Each extra card shed is worth something; Whots are kept back unless they're all that's left.
+    if (card.number !== WHOT || onlyWhots || rest.length === 0) score += 6 * (count - 1);
+    else score -= 40 * (count - 1);
     // Keep options open: prefer leaving cards that can follow the new top.
-    score += 3 * rest.filter((c) => c.shape === card.shape || c.number === card.number).length;
+    score += 3 * rest.filter((c) => c.shape === top.shape || c.number === top.number).length;
     score += rng() * 0.5;
     if (score > bestScore) {
       bestScore = score;
