@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AYO_BOARDS, CARD_BACKS, cosmetics, isUnlocked, pick, totalWins, type AyoBoardStyle } from "@/lib/cosmetics";
+import { AYO_BOARDS, CARD_BACKS, cosmetics, pick, totalWins, type AyoBoardStyle } from "@/lib/cosmetics";
 import { sfx } from "@/lib/feedback";
 import { stats } from "@/lib/stats";
 import { CardBack } from "./whot/WhotCard";
