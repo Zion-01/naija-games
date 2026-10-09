@@ -9,7 +9,8 @@ import { fetchRoomSummary } from "@/lib/rooms";
 export async function generateMetadata({ params }: PageProps<"/play/[code]">): Promise<Metadata> {
   const code = normalizeCode((await params).code);
   const room = code ? await fetchRoomSummary(code) : null;
-  const title = room ? inviteLine(room.host, room.game) : "Your guy dey wait · Naija Games";
+  const gameName = room?.game === "whot" ? "Whot" : "Ayo";
+  const title = !room ? "Your guy dey wait · Naija Games" : room.quick ? `${gameName} quick match · Naija Games` : inviteLine(room.host, room.game);
   const description = room
     ? `Room ${room.code} · ${room.game === "whot" ? "Whot, Naija street rules" : "Ayo Olopon"}. Tap to play in your browser, no download.`
     : "Play Whot and Ayo online with your guys. Free in your browser.";

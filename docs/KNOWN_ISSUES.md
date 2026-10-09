@@ -1,6 +1,6 @@
 # Known issues and loose ends
 
-What still needs attention after Phase 3 (online multiplayer) and Phase 4a–4b (accounts, ratings). Each item has an id (`KI-n`), so code comments, commits and PRs can point to it. When you fix one, delete it here and remove its `KI-n` comment from the code.
+What still needs attention after Phase 3 (online multiplayer) and Phase 4a–4c (accounts, ratings, quick-match). Each item has an id (`KI-n`), so code comments, commits and PRs can point to it. When you fix one, delete it here and remove its `KI-n` comment from the code.
 
 Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 minor or cosmetic.
 
@@ -12,7 +12,7 @@ Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 m
 | KI-2 | 🔴 | **The game server isn't deployable yet.** There is no Dockerfile or Fly.io/Railway config, and it runs through `tsx` with no build step. | `apps/server` | Add a Dockerfile (or Fly config) and a health-checked deploy. The server already serves `GET /health`. |
 | KI-3 | 🔴 | **The production URL must be set.** Without `NEXT_PUBLIC_GAME_SERVER_URL`, the browser tries `http(s)://<page host>:2567`. That only works in development. An HTTPS page pointing at a plain `ws://` server is blocked as mixed content. | `gameServerUrl()` in `apps/web/src/lib/online.ts` | Set `NEXT_PUBLIC_GAME_SERVER_URL=https://…` (TLS) on the web deploy, and `GAME_SERVER_URL` if the web server reaches the game server on a different address. |
 | KI-4 | 🔴 | **Not yet tried on a real phone via WhatsApp** (plan's Verification section). WhatsApp's link preview and its in-app browser are untested. | — | Manual check on a real Android phone once KI-2 and KI-3 are done. |
-| KI-5 | 🟠 | **Rooms live in one process's memory.** A server restart or deploy ends every game in progress. You can't run two server instances: `/rooms/:code` and the `matches` map only know about local rooms. | `apps/server/src/rooms.ts` (`matches`) | Deploy outside play hours, or add Colyseus Redis presence/driver and look up summaries through `matchMaker.query` before scaling past one node (Phase 5 load test). |
+| KI-5 | 🟠 | **Rooms live in one process's memory.** A server restart or deploy ends every game in progress. You can't run two server instances: `/rooms/:code` and the `matches` map only know about local rooms, and the quick-match queue only pairs players on the same process. | `apps/server/src/rooms.ts` (`matches`, `queue`), `apps/server/src/queue.ts` | Deploy outside play hours, or add Colyseus Redis presence/driver and look up summaries through `matchMaker.query` before scaling past one node (Phase 5 load test). The queue would need to move to Redis (or one dedicated matchmaker node) too. |
 
 ## Security and abuse
 

@@ -13,6 +13,11 @@ export const TURN_SECONDS: Record<GameId, number> = { whot: 20, ayo: 30 };
 export const RECONNECT_SECONDS = 60;
 export const MAX_SPECTATORS = 8;
 
+/** Quick-match: after this long in the queue the client offers "Play the computer" (and keeps searching). */
+export const QUICK_OFFER_SECONDS = 20;
+/** Quick-match: nobody waits longer than this; the server seats them against the computer. */
+export const QUICK_MAX_WAIT_SECONDS = 60;
+
 /** Room codes: four letters, without I and O so they can't be misread as 1 and 0. */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const CODE_LENGTH = 4;
@@ -60,6 +65,10 @@ export type WhotRoomOptions = { players: number; handSize: number };
  */
 export type JoinOptions = { nickname: string; guestId?: string; spectate?: boolean };
 export type CreateOptions = JoinOptions & { whot?: Partial<WhotRoomOptions> };
+/** Sent with `joinOrCreate('queue')`. Quick-match is always two players, Whot included. */
+export type QueueOptions = { nickname: string; guestId?: string; game: GameId };
+/** The queue found you a game: join room `code` (it holds your seat). */
+export type MatchedMessage = { code: string };
 
 export type WhotWireMove =
   | { type: 'play'; cardId: string; stack?: string[]; callShape?: whot.CallableShape; lastCard?: boolean }
@@ -102,6 +111,8 @@ export type Snapshot<G extends GameId = GameId> = {
    * that aren't rated (fewer than two players with accounts).
    */
   ratings: RatingChange[] | null;
+  /** A quick-match room: seats are held for the matched players and nobody hosts. */
+  quick: boolean;
 };
 
 /** Public facts about a room, served at GET /rooms/:code for invite pages and link previews. */
@@ -112,13 +123,24 @@ export type RoomSummary = {
   seats: number;
   filled: number;
   status: RoomStatus;
+  /** A quick-match room: nobody invited anybody, so previews don't say "X don challenge you". */
+  quick: boolean;
 };
 
 /**
  * Message types, by direction. Client → server: `move` (a wire move), `start` (host only, before the game:
- * fill the open seats with the computer and deal), `rematch`. Server → client: `snapshot`, `error`.
+ * fill the open seats with the computer and deal), `rematch`, and in the queue room `solo` (stop waiting and
+ * play the computer). Server → client: `snapshot`, `error`, and in the queue room `matched`.
  */
-export const MSG = { move: 'move', start: 'start', rematch: 'rematch', snapshot: 'snapshot', error: 'error' } as const;
+export const MSG = {
+  move: 'move',
+  start: 'start',
+  rematch: 'rematch',
+  solo: 'solo',
+  snapshot: 'snapshot',
+  error: 'error',
+  matched: 'matched',
+} as const;
 export type ErrorMessage = { text: string };
 
 const isInt = (v: unknown, min: number, max: number): v is number =>

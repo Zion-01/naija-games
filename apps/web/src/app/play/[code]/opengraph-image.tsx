@@ -12,7 +12,7 @@ const STRIPE = ["#e2a33a", "#1f7a4d", "#b3261e", "#2b3a8c"];
 export default async function Image({ params }: { params: Promise<{ code: string }> }) {
   const code = normalizeCode((await params).code);
   const room = code ? await fetchRoomSummary(code) : null;
-  const headline = room ? inviteLine(room.host, room.game) : "Your guy don challenge you!";
+  const headline = !room ? "Your guy don challenge you!" : room.quick ? "Quick match dey go on!" : inviteLine(room.host, room.game);
   const game = room?.game === "ayo" ? "Ayo" : room?.game === "whot" ? "Whot" : "Whot · Ayo";
 
   return new ImageResponse(

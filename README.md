@@ -31,6 +31,8 @@ Playwright needs a Chromium: run `pnpm --filter web exec playwright install chro
 
 Pick **🌍 Online** in a game's setup, enter a nickname and tap **Invite your guy**. You land on `/play/ABCD` with a WhatsApp share button; the link preview says "Tunde don challenge you for Whot!". The host can start early and let the computer fill the open seats.
 
+Or tap **Find me opponent**: the server pairs you with someone near your rating (one on one, for both games). If nobody turns up, you can play the computer after 20 seconds, and the computer takes you on automatically after a minute.
+
 - **The server is authoritative.** Clients send moves without a player number; the server stamps the sender's seat, checks the move with the engine, and sends each client a snapshot built from `viewFor` for their seat. Nobody receives another player's cards.
 - **Turn timer**: Whot 20s, Ayo 30s. When it runs out, the server plays an Easy-AI move for you.
 - **Drops**: the SDK reconnects by itself. After 60s away, the computer (Medium) takes the seat. Opening the link again while signed in to the same account gives you your seat back.

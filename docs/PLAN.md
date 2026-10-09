@@ -65,15 +65,14 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 
 > Status: Phases 0–3 are done. Gaps left in Phase 3 (deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
-**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match, **4d** weekly leaderboards.
+**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match (done), **4d** weekly leaderboards.
 - Upgrade a guest to Google or phone OTP and keep their history. Profiles with an Elo rating per game.
 - Quick-match queue (matched by rating), and weekly leaderboards ("Oga of the Week").
-- Notes for 4c (quick-match), from what 4a/4b left in place:
-  - Invite rooms are private on purpose (`setPrivate(true)`, so `joinOrCreate` never hands them out). Quick-match needs its own path, e.g. a queue room or a small matchmaker in the server that pairs players and then creates a normal room for them. Keep `Match` free of Colyseus imports.
-  - The rating to match on is in `ratings` (public read). The server only has `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, so read it there with the secret key, keyed by the verified `userId` from `onAuth`, never a rating sent by the client. A player with no row is 1200.
-  - Widen the allowed rating gap the longer someone waits, and offer the computer after a timeout so nobody waits forever.
-  - Whot quick-match: decide 2-player only, or fill 3–4 seats. Ayo is always 2.
-  - Rooms are single-process (KI-5), so an in-memory queue is fine for now. Note it next to KI-5.
+- How 4c (quick-match) works:
+  - "Find me opponent" joins the `queue` room (`QueueRoom` in `apps/server/src/rooms.ts`). Its `onAuth` reads the player's rating from `ratings` with the secret key, keyed by the verified `userId` (1200 without a row, or without Supabase). The pairing logic is `Matchmaker` in `apps/server/src/queue.ts` (no Colyseus imports, unit-tested with fake timers).
+  - Two players match when their gap fits inside both their windows (±100, plus 25 per second waited), so newcomers aren't thrown at someone far away but nobody waits long. The client offers "Play the computer" after 20s (`QUICK_OFFER_SECONDS`); after 60s (`QUICK_MAX_WAIT_SECONDS`) the server seats them against the computer.
+  - Quick-match is 2-player for both games (Whot included, so matches come fast). The server opens a normal private room with seats held for the two players (`Match` option `reserved`): nobody hosts, anyone else with the code only watches, and a no-show's seat goes to the computer after 10s. Results and ratings save like any other room.
+  - The queue is in memory (KI-5), so it only pairs players on one server process.
 - Supabase tables: `profiles`, `matches`, `match_players`, `ratings`, with row-level security. The server writes results using the service key.
 
 **Phase 5: Polish and launch (ongoing).** Emotes and banter stickers in matches, cosmetic card backs and ayo boards (ads or monetisation later, no gambling mechanics), privacy-friendly analytics, and load testing a single Colyseus node.
