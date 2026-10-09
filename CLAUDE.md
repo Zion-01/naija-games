@@ -9,10 +9,10 @@ Read `README.md` for the layout, `docs/PLAN.md` for the phased roadmap, and `doc
 - ✅ **Phase 3, online multiplayer**: `packages/online` (protocol), `apps/server` (`Match` + `WhotRoom`/`AyoRoom`, `GET /rooms/:code`), `/play/[code]` with WhatsApp invite + dynamic OG image, turn timers with Easy-AI auto-play, 60s reconnect then AI takeover, guest-id seat reclaim, spectators, rematch, rate limits. Server tests (unit + real WebSocket), Playwright e2e (`pnpm e2e`).
 - ✅ **Phase 4a, accounts**: Supabase project `naija-games` (ref `xotjtshlesompmxnhjke`, eu-west-2). Anonymous sign-in on first online play, upgrade to Google/phone on `/profile`, server verifies the JWT in `onAuth`, results saved via `record_match`. Migrations in `supabase/migrations/`.
 - ✅ **Phase 4b, Elo**: `ratings` table (per user per game), updated inside `record_match`, which returns each rated seat's change; the server puts it in `Snapshot.ratings` for the game-over screen. Maths checked by `supabase/tests/ratings.test.sql`.
-- 🔴 Launch blockers: see the "Before launch" table in `docs/KNOWN_ISSUES.md` (dashboard sign-in settings, server secret key, server deploy, production URL, real-phone check, single-process rooms).
+- 🔴 Launch blockers: see the "Before launch" table in `docs/KNOWN_ISSUES.md` (phone sign-in and CAPTCHA, server deploy, production URL, real-phone check, single-process rooms).
 - ⏭️ **Next: Phase 4c** (quick-match queue by rating; notes in `docs/PLAN.md`), then 4d weekly leaderboards ("Oga of the Week").
 - 🌿 **Branches:** Phase 4 ships as stacked PRs, one per sub-phase (4a = Zion-01/naija-games#5 and 4b = #7 are merged; #6 was the same 4b, closed when its base branch was deleted). Branch 4c from `main`. If an earlier sub-phase PR is still open when you start the next, branch from it and open the PR against it; after it squash-merges, rebase with `git rebase --onto origin/main <old-base-commit> <branch>` and retarget.
-- 🔑 `SUPABASE_SECRET_KEY` is **not set** in `apps/server/.env.local` yet (KI-23), so the local server can't save results or ratings. Ask the user for it before testing anything that needs saved games; don't try to fetch it.
+- 🔑 Local setup is complete for 4c: `apps/server/.env.local` has `SUPABASE_SECRET_KEY` (never print or commit it), so the local server saves results and ratings. Anonymous sign-ins, manual linking and Google are on. Phone sign-in isn't (KI-22).
 
 ## Decisions already made (don't revisit)
 - Web-first, Next.js. Online multiplayer comes in v1 (Phase 3), after the offline build.
