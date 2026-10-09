@@ -1,7 +1,7 @@
 import type { Sfx } from "./feedback";
 
-/** A line for the toast (and the voice, when `speak` is set). */
-export type Callout = { text: string; sfx: Sfx; speak: boolean; tone?: "good" | "bad" | "info" };
+/** A line for the toast, with its sound. */
+export type Callout = { text: string; sfx: Sfx; tone?: "good" | "bad" | "info" };
 
 export const LINES = {
   holdOn: "Hold on!",

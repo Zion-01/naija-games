@@ -1,5 +1,5 @@
 import { ayo } from "@naija/engine";
-import { LINES, type Callout } from "./voice";
+import { LINES, type Callout } from "./callouts";
 
 /**
  * Board snapshots for animating a sow from `pit`: the pit is lifted, then one seed lands per frame.
@@ -31,13 +31,13 @@ export function ayoCallouts(
   const captured = next.stores[move.player] - prev.stores[move.player];
   const mine = me === null || move.player === me;
   if (captured > 0) {
-    out.push({ text: LINES.captured(names[move.player], captured), sfx: "capture", speak: mine || captured >= 4, tone: mine ? "good" : "bad" });
+    out.push({ text: LINES.captured(names[move.player], captured), sfx: "capture", tone: mine ? "good" : "bad" });
   }
   if (next.over) {
-    if (next.winner === null) out.push({ text: LINES.draw, sfx: "special", speak: true, tone: "info" });
-    else if (me === null) out.push({ text: `${names[next.winner]} win! 🎉`, sfx: "win", speak: true, tone: "good" });
-    else if (next.winner === me) out.push({ text: LINES.youWin, sfx: "win", speak: true, tone: "good" });
-    else out.push({ text: LINES.youLose, sfx: "lose", speak: true, tone: "bad" });
+    if (next.winner === null) out.push({ text: LINES.draw, sfx: "special", tone: "info" });
+    else if (me === null) out.push({ text: `${names[next.winner]} win! 🎉`, sfx: "win", tone: "good" });
+    else if (next.winner === me) out.push({ text: LINES.youWin, sfx: "win", tone: "good" });
+    else out.push({ text: LINES.youLose, sfx: "lose", tone: "bad" });
   }
   return out;
 }

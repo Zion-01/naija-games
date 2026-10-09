@@ -71,7 +71,7 @@ function Room({ code }: { code: string }) {
   useEffect(() => {
     const c = connect(code);
     const release = c.retain();
-    const offError = c.onError((text) => push([{ text, sfx: "error", speak: false, tone: "bad" }]));
+    const offError = c.onError((text) => push([{ text, sfx: "error", tone: "bad" }]));
     return () => {
       offError();
       release();

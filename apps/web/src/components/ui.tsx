@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { say, sfx } from "@/lib/feedback";
+import { sfx } from "@/lib/feedback";
 import { settings } from "@/lib/settings";
-import type { Callout } from "@/lib/voice";
+import type { Callout } from "@/lib/callouts";
 
-/** Toast queue for pidgin callouts. `push` also plays the sound, vibration and voice for each line. */
+/** Toast queue for pidgin callouts. `push` also plays the sound and vibration. */
 export function useCallouts() {
   const [toasts, setToasts] = useState<(Callout & { id: number })[]>([]);
   const nextId = useRef(0);
@@ -19,9 +19,7 @@ export function useCallouts() {
 
   const push = useCallback((callouts: Callout[]) => {
     if (callouts.length === 0) return;
-    const spoken = callouts.filter((c) => c.speak).map((c) => c.text);
     sfx(callouts[callouts.length - 1]!.sfx);
-    if (spoken.length) say(spoken.join(" "));
     const fresh = callouts.map((c) => ({ ...c, id: nextId.current++ }));
     setToasts((prev) => [...prev, ...fresh].slice(-3));
     const timer = setTimeout(() => {
@@ -78,9 +76,6 @@ export function SettingsToggles() {
     <div className="flex items-center gap-1">
       <ToggleButton on={s.sound} label="Sound" onClick={() => settings.set({ sound: !s.sound })}>
         {s.sound ? "🔊" : "🔇"}
-      </ToggleButton>
-      <ToggleButton on={s.voice && s.sound} label="Pidgin voice" onClick={() => settings.set({ voice: !s.voice })}>
-        🗣️
       </ToggleButton>
       <ToggleButton on={s.haptics} label="Vibration" onClick={() => settings.set({ haptics: !s.haptics })}>
         📳

@@ -3,7 +3,7 @@ import { ayo, createRng, whot, type Rng } from "@naija/engine";
 import type { Snapshot } from "@naija/online";
 import { ayoCallouts, sowFrames } from "../src/lib/ayo-session";
 import { isNextMove, secondsLeft } from "../src/lib/online";
-import { LINES } from "../src/lib/voice";
+import { LINES } from "../src/lib/callouts";
 import { nextAiAction, whotCallouts, type WhotSeat } from "../src/lib/whot-session";
 
 const card = (shape: whot.Shape, number: number): whot.Card => ({ id: `${shape}-${number}`, shape, number });
@@ -128,7 +128,7 @@ describe("online helpers", () => {
 });
 
 describe("callouts from server views", () => {
-  it("works on redacted views and speaks from the viewer's seat", () => {
+  it("works on redacted views and calls from the viewer's seat", () => {
     const s0 = table([[card("circle", 9)], [card("circle", 3), card("star", 4)]], card("circle", 4));
     const move = { type: "play", player: 0, cardId: "circle-9" } as const;
     const s1 = play(s0, move);

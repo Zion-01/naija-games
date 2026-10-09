@@ -7,7 +7,7 @@ import { AyoBoard, PlayerBar, useSowAnimation } from "@/components/ayo/AyoBoard"
 import { Modal, type useCallouts } from "@/components/ui";
 import { ayoCallouts } from "@/lib/ayo-session";
 import { isNextMove, type Connection } from "@/lib/online";
-import { LINES } from "@/lib/voice";
+import { LINES } from "@/lib/callouts";
 import { RematchButtons, useSecondsLeft } from "./shared";
 
 type Push = ReturnType<typeof useCallouts>["push"];

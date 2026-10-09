@@ -128,7 +128,7 @@ function WhotTable({ config, seed, onRestart }: { config: Config; seed: number; 
       const prev = stateRef.current;
       const result = whot.applyMove(prev, move);
       if (!result.ok) {
-        push([{ text: result.error, sfx: "error", speak: false, tone: "bad" }]);
+        push([{ text: result.error, sfx: "error", tone: "bad" }]);
         return false;
       }
       stateRef.current = result.state;
@@ -182,7 +182,7 @@ function WhotTable({ config, seed, onRestart }: { config: Config; seed: number; 
         }
         onDraw={() => apply({ type: "draw", player: me })}
         onCatch={(target) => apply({ type: "catch", player: me, target })}
-        onInvalid={(text) => push([{ text, sfx: "error", speak: false, tone: "bad" }])}
+        onInvalid={(text) => push([{ text, sfx: "error", tone: "bad" }])}
       />
 
       {!revealed && !state.over && (
