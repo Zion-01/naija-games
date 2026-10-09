@@ -65,9 +65,15 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 
 > Status: Phases 0–3 are done. Gaps left in Phase 3 (deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
-**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings, **4c** quick-match, **4d** weekly leaderboards.
+**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match, **4d** weekly leaderboards.
 - Upgrade a guest to Google or phone OTP and keep their history. Profiles with an Elo rating per game.
 - Quick-match queue (matched by rating), and weekly leaderboards ("Oga of the Week").
+- Notes for 4c (quick-match), from what 4a/4b left in place:
+  - Invite rooms are private on purpose (`setPrivate(true)`, so `joinOrCreate` never hands them out). Quick-match needs its own path, e.g. a queue room or a small matchmaker in the server that pairs players and then creates a normal room for them. Keep `Match` free of Colyseus imports.
+  - The rating to match on is in `ratings` (public read). The server only has `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, so read it there with the secret key, keyed by the verified `userId` from `onAuth`, never a rating sent by the client. A player with no row is 1200.
+  - Widen the allowed rating gap the longer someone waits, and offer the computer after a timeout so nobody waits forever.
+  - Whot quick-match: decide 2-player only, or fill 3–4 seats. Ayo is always 2.
+  - Rooms are single-process (KI-5), so an in-memory queue is fine for now. Note it next to KI-5.
 - Supabase tables: `profiles`, `matches`, `match_players`, `ratings`, with row-level security. The server writes results using the service key.
 
 **Phase 5: Polish and launch (ongoing).** Emotes and banter stickers in matches, cosmetic card backs and ayo boards (ads or monetisation later, no gambling mechanics), privacy-friendly analytics, and load testing a single Colyseus node.

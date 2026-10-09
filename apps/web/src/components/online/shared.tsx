@@ -7,6 +7,32 @@ import { PrimaryButton } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
 import { secondsLeft, type Connection } from "@/lib/online";
 
+/** "Rating 1200 → 1220 (+20)" for you, and everyone else's change underneath, once the server has saved the game. */
+export function RatingChanges({ snap }: { snap: Snapshot }) {
+  if (!snap.ratings?.length) return null;
+  const mine = snap.ratings.find((r) => r.seat === snap.you);
+  const others = snap.ratings.filter((r) => r !== mine);
+  const diff = (r: { before: number; after: number }) => {
+    const d = r.after - r.before;
+    return d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "±0";
+  };
+  return (
+    <div className="flex w-full flex-col items-center gap-1 text-center">
+      {mine && (
+        <p className="text-lg font-black">
+          Rating {mine.before} → {mine.after}{" "}
+          <span className={mine.after > mine.before ? "text-palm" : mine.after < mine.before ? "text-[var(--card-ink)]" : "text-muted"}>
+            ({diff(mine)})
+          </span>
+        </p>
+      )}
+      {others.length > 0 && (
+        <p className="text-sm text-muted">{others.map((r) => `${snap.seats[r.seat]?.name ?? "?"} ${r.after} (${diff(r)})`).join(" · ")}</p>
+      )}
+    </div>
+  );
+}
+
 /** Rematch controls for the end-of-game modal. */
 export function RematchButtons({ snap, conn }: { snap: Snapshot; conn: Connection }) {
   const asked = snap.you >= 0 && snap.rematch.includes(snap.you);
@@ -15,6 +41,7 @@ export function RematchButtons({ snap, conn }: { snap: Snapshot; conn: Connectio
     .join(" & ");
   return (
     <div className="flex w-full flex-col gap-2">
+      <RatingChanges snap={snap} />
       <div className="flex gap-2">
         <Link href="/" className="flex-1 rounded-2xl bg-surface py-3.5 text-center font-bold">
           Lobby

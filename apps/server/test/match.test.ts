@@ -236,3 +236,23 @@ describe('results', () => {
     expect(onOver.mock.calls[0]![0].players.map((p: { kind: string }) => p.kind)).toEqual(['human', 'ai', 'ai']);
   });
 });
+
+describe('rating changes', () => {
+  it('shows the saved rating changes until the rematch deals, and ignores late ones for an old round', () => {
+    const match = new Match('AYOO', ayoRules(), 1, () => {});
+    join(match, 'a');
+    join(match, 'b');
+    match.status = 'over';
+    const change = [{ seat: 0, before: 1200, after: 1220 }, { seat: 1, before: 1200, after: 1180 }];
+    match.setRatings(0, change);
+    expect(match.snapshotFor('b').ratings).toEqual(change);
+
+    match.requestRematch('a');
+    match.requestRematch('b');
+    expect(match.round).toBe(1);
+    expect(match.snapshotFor('a').ratings).toBeNull();
+    // The save for round 0 lands after the rematch started: not shown on the new game.
+    match.setRatings(0, change);
+    expect(match.snapshotFor('a').ratings).toBeNull();
+  });
+});
