@@ -1,0 +1,518 @@
+<!doctype html>
+<!-- The 30s promo video: canvas animation + a synthesised amapiano-style beat.
+     record.mjs serves this and records it with MediaRecorder. Open it through
+     record.mjs --preview to watch it with sound. -->
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Naija Games promo</title>
+<style>
+  html, body { margin: 0; background: #0b0d1c; height: 100%; display: grid; place-items: center; }
+  canvas { height: 100vh; aspect-ratio: 9 / 16; }
+  #play { position: fixed; inset: 0; font: 800 32px sans-serif; color: #fbf4e6; background: rgb(0 0 0 / 0.5); border: 0; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<button id="play" hidden>▶ Play</button>
+<script>
+const W = 1080, H = 1920, BPM = 112, BEAT = 60 / BPM, DUR = 56 * BEAT; // 30.0s
+const C = {
+  cream: "#fbf4e6", ink: "#1f160f", indigo: "#24316b", indigoDeep: "#18214d", ochre: "#e3a21a",
+  palm: "#1f7a4d", accent: "#d9480f", wine: "#8a1c2b", seed: "#f0e2c2", wood: "#8b5a2b", pit: "#4a2c12",
+};
+const FONT = 'Bricolage, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+// Scene starts in beats, so cuts land on the music.
+const SCENES = [
+  { id: "intro", beat: 0, bg: C.indigoDeep },
+  { id: "whot", beat: 6, bg: C.wine },
+  { id: "ayo", beat: 14, bg: C.palm },
+  { id: "cpu", beat: 22, bg: C.ochre, dark: true },
+  { id: "online", beat: 29, bg: C.indigo },
+  { id: "board", beat: 37, bg: C.accent },
+  { id: "style", beat: 44, bg: C.cream, dark: true },
+  { id: "outro", beat: 51, bg: C.indigoDeep },
+].map((s) => ({ ...s, start: s.beat * BEAT }));
+
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+// ---------- helpers ----------
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const eo = (p) => 1 - (1 - p) ** 3;
+const eb = (p) => { const c1 = 1.70158, c3 = c1 + 1; return p <= 0 ? 0 : 1 + c3 * (p - 1) ** 3 + c1 * (p - 1) ** 2; };
+const eio = (p) => (p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2);
+const prog = (lt, at, dur) => clamp((lt - at) / dur);
+
+function load(src) {
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+}
+
+function at(cx, cy, scale, rot, fn) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot); ctx.scale(scale, scale); fn(); ctx.restore();
+}
+
+function text(s, x, y, size, color, { align = "center", alpha = 1, base = "alphabetic" } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.font = `800 ${size}px ${FONT}`;
+  ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base;
+  ctx.fillText(s, x, y);
+  ctx.restore();
+}
+
+/** Text that rises into place from `at` seconds into the scene. */
+function rise(s, lt, t0, x, y, size, color, opts = {}) {
+  const p = eo(prog(lt, t0, 0.5));
+  if (p <= 0) return;
+  text(s, x, y + (1 - p) * 70, size, color, { ...opts, alpha: p });
+}
+
+function pill(label, cx, cy, size, bg, fg, scale = 1) {
+  if (scale <= 0) return;
+  ctx.font = `800 ${size}px ${FONT}`;
+  const w = ctx.measureText(label).width + size * 1.3, h = size * 1.75;
+  at(cx, cy, scale, 0, () => {
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, h / 2); ctx.fill();
+    text(label, 0, size * 0.36, size, fg);
+  });
+}
+
+/** A row (or rows) of pills popping in one after another. */
+function chips(labels, lt, t0, y, size, bg, fg) {
+  ctx.font = `800 ${size}px ${FONT}`;
+  const ws = labels.map((l) => ctx.measureText(l).width + size * 1.3);
+  const gap = 18, rows = [[]];
+  let rowW = 0;
+  ws.forEach((w, i) => {
+    if (rowW + w > 980 && rows.at(-1).length) { rows.push([]); rowW = 0; }
+    rows.at(-1).push(i); rowW += w + gap;
+  });
+  rows.forEach((row, r) => {
+    const total = row.reduce((s, i) => s + ws[i], 0) + gap * (row.length - 1);
+    let x = W / 2 - total / 2;
+    row.forEach((i) => {
+      pill(labels[i], x + ws[i] / 2, y + r * size * 2.2, size, bg, fg, eb(prog(lt, t0 + i * 0.22, 0.4)));
+      x += ws[i] + gap;
+    });
+  });
+}
+
+function star(cx, cy, R, r, n = 5) {
+  ctx.beginPath();
+  for (let i = 0; i < n * 2; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / n, rad = i % 2 ? r : R;
+    ctx.lineTo(cx + rad * Math.cos(a), cy + rad * Math.sin(a));
+  }
+  ctx.closePath();
+}
+
+/** A Whot card face, centred on the origin. */
+function card(shape, num) {
+  const w = 150, h = 220;
+  ctx.shadowColor = "rgb(0 0 0 / 0.3)"; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10;
+  ctx.fillStyle = "#fffdf7"; ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, 16); ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 5; ctx.stroke();
+  ctx.fillStyle = C.wine;
+  if (shape === "star") { star(0, 6, 48, 20); ctx.fill(); }
+  if (shape === "circle") { ctx.beginPath(); ctx.arc(0, 6, 40, 0, 7); ctx.fill(); }
+  if (shape === "triangle") { ctx.beginPath(); ctx.moveTo(0, -36); ctx.lineTo(44, 44); ctx.lineTo(-44, 44); ctx.fill(); }
+  if (shape === "cross") { ctx.fillRect(-14, -34, 28, 80); ctx.fillRect(-40, -8, 80, 28); }
+  if (shape === "whot") text("WHOT", 0, 22, 40, C.wine);
+  text(String(num), -w / 2 + 14, -h / 2 + 40, 34, C.wine, { align: "left" });
+}
+
+function seed(x, y, rot, s = 1) {
+  at(x, y, s, rot, () => {
+    ctx.fillStyle = C.seed; ctx.strokeStyle = "#3f2610"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(0, 0, 26, 19, 0, 0, 7); ctx.fill(); ctx.stroke();
+  });
+}
+
+/** A phone showing a screenshot, centred on (cx, cy). */
+function phone(img, cx, cy, w, rot = 0) {
+  const h = (w * img.height) / img.width, pad = w * 0.035;
+  at(cx, cy, 1, rot, () => {
+    ctx.shadowColor = "rgb(0 0 0 / 0.4)"; ctx.shadowBlur = 70; ctx.shadowOffsetY = 34;
+    ctx.fillStyle = "#121010";
+    ctx.beginPath(); ctx.roundRect(-w / 2 - pad, -h / 2 - pad, w + 2 * pad, h + 2 * pad, w * 0.14); ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, w * 0.11); ctx.clip();
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  });
+}
+
+/** Ankara wax-print tiles (diamonds and dots), light and dark. */
+function patternTile(color) {
+  const t = document.createElement("canvas"); t.width = t.height = 120;
+  const g = t.getContext("2d");
+  g.strokeStyle = color; g.fillStyle = color; g.lineWidth = 7;
+  g.beginPath(); g.moveTo(60, 12); g.lineTo(108, 60); g.lineTo(60, 108); g.lineTo(12, 60); g.closePath(); g.stroke();
+  g.beginPath(); g.arc(60, 60, 11, 0, 7); g.fill();
+  for (const [x, y] of [[0, 0], [120, 0], [0, 120], [120, 120]]) { g.beginPath(); g.arc(x, y, 10, 0, 7); g.fill(); }
+  return ctx.createPattern(t, "repeat");
+}
+let patLight, patDark;
+
+function background(s, t) {
+  ctx.fillStyle = s.bg; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.globalAlpha = s.dark ? 0.07 : 0.09;
+  ctx.translate((t * 18) % 120, (t * 30) % 120);
+  ctx.fillStyle = s.dark ? patDark : patLight;
+  ctx.fillRect(-120, -120, W + 240, H + 240);
+  ctx.restore();
+}
+
+function kente(y, h, t) {
+  const cols = [C.ochre, C.palm, C.accent, C.indigo];
+  const seg = 90, off = (t * 70) % (seg * 4);
+  for (let x = -seg * 4 + off, i = 0; x < W; x += seg, i++) {
+    ctx.fillStyle = cols[i % 4]; ctx.fillRect(x, y, seg, h);
+  }
+}
+
+// ---------- scenes ----------
+let IMG = {};
+const ink = (s) => (s.dark ? C.ink : C.cream);
+const pop = (lt, t0, d = 0.45) => eb(prog(lt, t0, d));
+const slideUp = (lt, t0) => (1 - eb(prog(lt, t0, 0.75))) * 1100;
+
+const DRAW = {
+  intro(lt, t) {
+    const g = ctx.createRadialGradient(540, 760, 50, 540, 760, 700);
+    g.addColorStop(0, "rgb(227 162 26 / 0.35)"); g.addColorStop(1, "rgb(227 162 26 / 0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const p = pop(lt, 0.15, 0.7);
+    if (p > 0) at(540, 770 + Math.sin(t * 2.4) * 8, p, -0.6 * (1 - p) - 0.06, () => ctx.drawImage(IMG.mark, -280, -280, 560, 560));
+    const a = eo(prog(lt, 0.8, 0.5)), b = eo(prog(lt, 1.0, 0.5));
+    if (a > 0) text("Naija", 540 - (1 - a) * 700, 1290, 200, C.cream, { alpha: a });
+    if (b > 0) text("Games", 540 + (1 - b) * 700, 1480, 200, C.ochre, { alpha: b });
+    rise("Whot & Ayo with your guys", lt, 1.6, 540, 1620, 62, C.cream);
+    for (let i = 0; i < 7; i++) {
+      const sp = prog(lt, 1.9 + i * 0.07, 0.5);
+      if (sp > 0) seed(250 + i * 97, 1760 - Math.abs(Math.sin(sp * Math.PI * 2)) * 60 * (1 - sp), i + t, 0.9);
+    }
+  },
+  whot(lt, t, s) {
+    rise("NAIJA STREET RULES", lt, 0.15, 540, 250, 46, C.ochre);
+    rise("Whot!", lt, 0.25, 540, 470, 220, C.cream);
+    chips(["Hold on", "Pick two", "General market", "Last card!"], lt, 0.7, 590, 40, C.cream, C.wine);
+    const cards = [["star", 7, 150, 1020, -0.35], ["circle", 2, 935, 1120, 0.3], ["whot", 20, 165, 1540, 0.2], ["cross", 11, 925, 1600, -0.25]];
+    cards.forEach(([shape, num, x, y, r], i) => {
+      const p = pop(lt, 1.0 + i * 0.18, 0.5);
+      if (p > 0) at(x, y + Math.sin(t * 2 + i) * 14, p, r + Math.sin(t * 1.5 + i) * 0.06, () => card(shape, num));
+    });
+    phone(IMG.whot, 540, 1330 + slideUp(lt, 0.2), 540, -0.03);
+  },
+  ayo(lt, t, s) {
+    rise("THE OLD-SCHOOL SEED GAME", lt, 0.15, 540, 250, 46, C.ochre);
+    rise("Ayo Olopon", lt, 0.25, 540, 430, 170, C.cream);
+    rise("12 pits · 48 seeds · capture 2s & 3s", lt, 0.5, 540, 530, 46, C.cream, { alpha: 0.85 });
+    for (let i = 0; i < 14; i++) {
+      const side = i % 2 ? 960 : 120, start = 0.6 + i * 0.22;
+      const p = (lt - start) / 2.2;
+      if (p > 0 && p < 1) seed(side + Math.sin(i * 3.3) * 60, 640 + p * 1300, t * 3 + i, 1.2);
+    }
+    phone(IMG.ayo, 540, 1330 + slideUp(lt, 0.2), 540, 0.03);
+  },
+  cpu(lt, t, s) {
+    rise("NO GUY AROUND?", lt, 0.15, 540, 240, 46, C.wine);
+    rise("Play the", lt, 0.25, 540, 390, 150, C.ink);
+    rise("computer", lt, 0.35, 540, 535, 150, C.ink);
+    const levels = ["Learner", "Street", "Oga 👑"];
+    const hi = Math.min(2, Math.floor(Math.max(0, lt - 1.4) / 0.55));
+    levels.forEach((l, i) => {
+      const on = lt > 1.4 && i === hi;
+      pill(l, 250 + i * 290, 665, 44, on ? C.accent : C.cream, on ? "#fff" : C.ink, pop(lt, 0.7 + i * 0.18) * (on ? 1.08 : 1));
+    });
+    phone(IMG.setup, 540, 1400 + slideUp(lt, 0.25), 520, 0.03);
+    const p = pop(lt, 2.2);
+    if (p > 0) at(860, 1720, p, -0.08, () => pill("or pass the phone 📱", 0, 0, 38, C.ink, C.cream));
+  },
+  online(lt, t, s) {
+    rise("ONLINE MULTIPLAYER", lt, 0.15, 540, 240, 46, C.ochre);
+    rise("Challenge your guy", lt, 0.25, 540, 370, 108, C.cream);
+    rise("on WhatsApp", lt, 0.35, 540, 485, 108, C.ochre);
+    // An incoming chat bubble with the invite link preview.
+    const p = eo(prog(lt, 0.6, 0.6));
+    if (p > 0) at(540 + (1 - p) * 900, 860, 1, 0, () => {
+      ctx.fillStyle = "#e7f7df"; ctx.beginPath(); ctx.roundRect(-430, -230, 860, 470, 40); ctx.fill();
+      ctx.fillStyle = C.cream; ctx.beginPath(); ctx.roundRect(-405, -205, 810, 330, 26); ctx.fill();
+      ctx.save(); ctx.beginPath(); ctx.roundRect(-405, -205, 810, 330, 26); ctx.clip();
+      kente(-205, 18, 0);
+      ctx.restore();
+      ctx.drawImage(IMG.mark, -380, -160, 120, 120);
+      text("NAIJA GAMES · WHOT", -240, -120, 30, "#7a5a3a", { align: "left" });
+      text("Tunde don challenge", -240, -62, 50, C.ink, { align: "left" });
+      text("you for Whot!", -240, -8, 50, C.ink, { align: "left" });
+      pill("OYAA", 250, 70, 40, C.ink, C.cream);
+      text("Tap to play. No download.", -380, 82, 34, C.ink, { align: "left" });
+      text("naija-games.vercel.app/play/OYAA", -400, 196, 32, "#1a6fb5", { align: "left" });
+    });
+    const r = eo(prog(lt, 1.7, 0.5));
+    if (r > 0) at(380 - (1 - r) * 900, 1200, 1, 0, () => {
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.roundRect(-270, -70, 540, 140, 40); ctx.fill();
+      text("I dey come! 😤", 0, 22, 56, C.ink);
+    });
+    ["😂", "🔥", "👏", "😜", "🃏"].forEach((e, i) => {
+      const q = pop(lt, 2.2 + i * 0.2, 0.4);
+      if (q > 0) at(170 + i * 185, 1460 + Math.sin(t * 4 + i) * 16, q, Math.sin(t * 3 + i) * 0.15, () => text(e, 0, 50, 130, "#000"));
+    });
+    rise("Quick match · turn timers · emotes · rematch", lt, 2.6, 540, 1690, 40, C.cream, { alpha: 0.9 });
+  },
+  board(lt, t, s) {
+    rise("WEEKLY LEADERBOARD", lt, 0.15, 540, 240, 46, C.cream, { alpha: 0.85 });
+    rise("Be Oga of", lt, 0.25, 540, 390, 150, C.cream);
+    rise("the Week 👑", lt, 0.35, 540, 540, 150, C.cream);
+    const p = eo(prog(lt, 0.4, 0.6));
+    if (p <= 0) return;
+    at(540, 1140 + (1 - p) * 1000, 1, 0, () => {
+      ctx.shadowColor = "rgb(0 0 0 / 0.3)"; ctx.shadowBlur = 50; ctx.shadowOffsetY = 20;
+      ctx.fillStyle = C.cream; ctx.beginPath(); ctx.roundRect(-440, -420, 880, 840, 50); ctx.fill();
+      ctx.shadowColor = "transparent";
+      ctx.fillStyle = C.ochre; ctx.beginPath(); ctx.roundRect(-405, -385, 810, 150, 34); ctx.fill();
+      text("👑", -320, -280, 80, "#000");
+      text("OGA OF THE WEEK", -240, -320, 32, C.ink, { align: "left" });
+      text("Chidi · +64 Elo", -240, -262, 56, C.ink, { align: "left" });
+      const rows = [["Chidi", 64], ["Amaka", 51], ["Tunde", 38], ["Bisi", 22], ["You", 17]];
+      rows.forEach(([name, pts], i) => {
+        const q = eo(prog(lt, 0.9 + i * 0.16, 0.45));
+        if (q <= 0) return;
+        const y = -150 + i * 112, me = name === "You";
+        ctx.save(); ctx.globalAlpha = q; ctx.translate((1 - q) * 300, 0);
+        if (me) { ctx.fillStyle = "rgb(217 72 15 / 0.14)"; ctx.beginPath(); ctx.roundRect(-405, y - 50, 810, 100, 24); ctx.fill(); }
+        text(String(i + 1), -350, y + 20, 52, C.muted ?? "#6b5b4b");
+        text(name, -280, y + 20, 56, C.ink, { align: "left" });
+        const shown = Math.round(pts * eo(prog(lt, 1.0 + i * 0.16, 1.0)));
+        text(`+${shown}`, 370, y + 20, 56, C.palm, { align: "right" });
+        ctx.restore();
+      });
+    });
+    rise("Elo ratings · matched by skill", lt, 1.8, 540, 1720, 44, C.cream);
+  },
+  style(lt, t, s) {
+    rise("YOUR TABLE, YOUR STYLE", lt, 0.15, 540, 240, 46, C.wine);
+    rise("Unlock card", lt, 0.25, 540, 385, 140, C.ink);
+    rise("backs & boards", lt, 0.35, 540, 520, 140, C.ink);
+    const a = eo(prog(lt, 0.3, 0.7)), b = eo(prog(lt, 0.55, 0.7));
+    if (a > 0) phone(IMG.style, 330 - (1 - a) * 800, 1250, 430, -0.08);
+    if (b > 0) phone(IMG.dark, 750 + (1 - b) * 800, 1320, 430, 0.08);
+    const p = pop(lt, 1.6);
+    if (p > 0) at(760, 1790, p, 0.05, () => pill("Dark mode too 🌙", 0, 0, 40, C.ink, C.cream));
+  },
+  outro(lt, t, s) {
+    const g = ctx.createRadialGradient(540, 640, 50, 540, 640, 600);
+    g.addColorStop(0, "rgb(227 162 26 / 0.3)"); g.addColorStop(1, "rgb(227 162 26 / 0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const p = pop(lt, 0.05, 0.6);
+    if (p > 0) at(540, 640 + Math.sin(t * 2.4) * 8, p, -0.06, () => ctx.drawImage(IMG.mark, -210, -210, 420, 420));
+    ctx.font = `800 150px ${FONT}`;
+    const wa = ctx.measureText("Naija ").width, wb = ctx.measureText("Games").width, x0 = 540 - (wa + wb) / 2;
+    rise("Naija", lt, 0.3, x0, 1010, 150, C.cream, { align: "left" });
+    rise("Games", lt, 0.4, x0 + wa, 1010, 150, C.ochre, { align: "left" });
+    rise("Free · No download · Works offline", lt, 0.7, 540, 1110, 48, C.cream, { alpha: 0.9 });
+    const q = pop(lt, 1.0);
+    if (q > 0) pill("naija-games.vercel.app", 540, 1290, 56, C.accent, "#fff", q * (1 + 0.03 * Math.sin(t * 2 * Math.PI / BEAT)));
+    rise("Oya, come play!", lt, 1.4, 540, 1520, 110, C.ochre);
+  },
+};
+
+function drawScene(s, lt, t) {
+  background(s, t);
+  DRAW[s.id](lt, t, s);
+  kente(0, 30, t); kente(H - 30, 30, t);
+}
+
+const WIPE = 0.42;
+function frame(t) {
+  let i = SCENES.length - 1;
+  while (i > 0 && SCENES[i].start > t) i--;
+  const s = SCENES[i], lt = t - s.start;
+  if (i > 0 && lt < WIPE) {
+    const prev = SCENES[i - 1];
+    drawScene(prev, t - prev.start, t);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, eio(lt / WIPE) * 1110, 0, 7); ctx.clip();
+    drawScene(s, lt, t);
+    ctx.restore();
+  } else drawScene(s, lt, t);
+  // Fade to black over the last half second.
+  if (t > DUR - 0.5) { ctx.fillStyle = `rgb(0 0 0 / ${clamp((t - DUR + 0.5) / 0.5)})`; ctx.fillRect(0, 0, W, H); }
+}
+
+// ---------- music ----------
+function music(ac, out, T0) {
+  const master = ac.createGain();
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.ratio.value = 4;
+  master.connect(comp).connect(out);
+  master.gain.setValueAtTime(0.7, T0);
+  master.gain.setValueAtTime(0.7, T0 + DUR - 1.6);
+  master.gain.linearRampToValueAtTime(0.0001, T0 + DUR);
+
+  const noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+  const nd = noise.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const shaper = ac.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = (i / 512) - 1; curve[i] = Math.tanh(2.5 * x); }
+  shaper.curve = curve;
+  const logBus = ac.createBiquadFilter(); logBus.type = "lowpass"; logBus.frequency.value = 1100;
+  shaper.connect(logBus).connect(master);
+
+  const env = (g, t, peak, decay, attack = 0.003) => {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+  };
+  const noiseHit = (t, type, freq, q, peak, decay) => {
+    const src = ac.createBufferSource(); src.buffer = noise;
+    const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+    const g = ac.createGain(); env(g, t, peak, decay);
+    src.connect(f).connect(g).connect(master); src.start(t, Math.random() * 0.5); src.stop(t + decay + 0.05);
+  };
+  const kick = (t, v = 1) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.13);
+    env(g, t, 0.9 * v, 0.32); o.connect(g).connect(master); o.start(t); o.stop(t + 0.4);
+  };
+  const shaker = (t, v) => noiseHit(t, "highpass", 7000, 0.7, 0.13 * v, 0.05);
+  const clap = (t) => { noiseHit(t, "bandpass", 1500, 0.9, 0.42, 0.13); noiseHit(t + 0.012, "bandpass", 2200, 1, 0.25, 0.09); };
+  const logDrum = (t, f, v = 1) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.setValueAtTime(f * 1.7, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.045);
+    env(g, t, 0.75 * v, 0.42, 0.006); o.connect(g).connect(shaper); o.start(t); o.stop(t + 0.5);
+  };
+  const kalimba = (t, f, v = 1) => {
+    for (const [mult, type, amt, dec] of [[1, "triangle", 0.2, 0.55], [2, "sine", 0.07, 0.3], [4.2, "sine", 0.025, 0.08]]) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = f * mult; env(g, t, amt * v, dec);
+      o.connect(g).connect(master); o.start(t); o.stop(t + dec + 0.05);
+    }
+  };
+  const whoosh = (t) => {
+    const src = ac.createBufferSource(); src.buffer = noise; src.loop = true;
+    const f = ac.createBiquadFilter(); f.type = "bandpass"; f.Q.value = 1.2;
+    f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(5000, t + 0.4);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    src.connect(f).connect(g).connect(master); src.start(t); src.stop(t + 0.5);
+  };
+  const boom = (t) => {
+    kick(t, 1.2);
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = 55; env(g, t, 0.5, 1.6, 0.01); o.connect(g).connect(master); o.start(t); o.stop(t + 1.7);
+    noiseHit(t, "lowpass", 3000, 0.5, 0.25, 0.8);
+  };
+
+  const N = { A1: 55, C2: 65.41, D2: 73.42, E2: 82.41, G1: 49, A4: 440, C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880 };
+  // Two-bar kalimba riff (8ths) and log-drum lines (16ths), A minor pentatonic.
+  const riff = ["E5", null, "A4", "C5", null, "D5", "E5", null, "G5", null, "E5", "D5", null, "C5", "A4", null];
+  const logs = [
+    { 0: "A1", 3: "A1", 6: "C2", 10: "E2", 13: "D2" },
+    { 0: "G1", 3: "G1", 6: "A1", 9: "C2", 11: "D2", 14: "E2" },
+  ];
+  const s16 = BEAT / 4, GROOVE = 6, OUTRO = 51, END = 56;
+  for (let b = 0; b < END; b++) {
+    const tb = T0 + b * BEAT, bar = Math.floor(b / 4), inBar = b % 4;
+    // Riff throughout; quieter in the intro.
+    for (let e = 0; e < 2; e++) {
+      const note = riff[((b * 2 + e) % 16)];
+      if (note && b < END - 1) kalimba(tb + e * BEAT / 2, N[note], b < GROOVE ? 0.8 : 1);
+    }
+    if (b >= 2) for (let k = 0; k < 4; k++) shaker(tb + k * s16, k % 2 ? 1 : 0.45);
+    if (b >= GROOVE && b < END - 1) {
+      kick(tb, inBar === 0 ? 1 : 0.75);
+      if (inBar === 1 || inBar === 3) clap(tb);
+      const line = logs[bar % 2];
+      for (let k = 0; k < 4; k++) { const n = line[inBar * 4 + k]; if (n) logDrum(tb + k * s16, N[n]); }
+    }
+  }
+  boom(T0 + 0.15);
+  boom(T0 + GROOVE * BEAT);
+  boom(T0 + OUTRO * BEAT);
+  kalimba(T0 + (END - 1) * BEAT, N.A5, 1.2); kalimba(T0 + (END - 1) * BEAT, N.E5, 1);
+  for (const s of SCENES.slice(1)) whoosh(T0 + s.start - 0.42);
+}
+
+// ---------- run ----------
+async function setup() {
+  const font = new FontFace("Bricolage", "url(/fonts/BricolageGrotesque-ExtraBold.ttf)", { weight: "800" });
+  document.fonts.add(await font.load());
+  const svg = await load("/icon.svg");
+  const m = document.createElement("canvas"); m.width = m.height = 1024;
+  m.getContext("2d").drawImage(svg, 0, 0, 1024, 1024);
+  IMG = {
+    mark: m,
+    whot: await load("/shots/whot.png"), ayo: await load("/shots/ayo.png"), setup: await load("/shots/whot-setup.png"),
+    style: await load("/shots/style.png"), dark: await load("/shots/lobby-dark.png"),
+  };
+  patLight = patternTile("#fffdf7"); patDark = patternTile(C.ink);
+  frame(0);
+}
+
+/** Plays it in real time with sound (for watching, not recording). */
+async function play() {
+  const ac = new AudioContext({ sampleRate: 48000 });
+  await ac.resume();
+  const T0 = ac.currentTime + 0.25;
+  music(ac, ac.destination, T0);
+  await new Promise((done) => {
+    const tick = () => {
+      const t = ac.currentTime - T0;
+      frame(Math.max(0, Math.min(t, DUR)));
+      if (t < DUR + 0.15) requestAnimationFrame(tick); else done();
+    };
+    requestAnimationFrame(tick);
+  });
+  await ac.close();
+}
+
+/** Renders every frame and the whole soundtrack offline into an MP4 (H.264 + AAC), so nothing drops. */
+async function render() {
+  const mb = await import("/mediabunny.mjs");
+  const FPS = 30, RATE = 48000;
+  const oac = new OfflineAudioContext(2, Math.ceil(DUR * RATE), RATE);
+  music(oac, oac.destination, 0);
+  const audio = await oac.startRendering();
+
+  const aac = await mb.canEncodeAudio("aac", { sampleRate: RATE, numberOfChannels: 2 });
+  const output = new mb.Output({ format: new mb.Mp4OutputFormat({ fastStart: "in-memory" }), target: new mb.BufferTarget() });
+  const video = new mb.CanvasSource(canvas, { codec: "avc", bitrate: 3_800_000, keyFrameInterval: 2 });
+  const sound = new mb.AudioBufferSource({ codec: aac ? "aac" : "opus", bitrate: 192_000 });
+  output.addVideoTrack(video, { frameRate: FPS });
+  output.addAudioTrack(sound);
+  await output.start();
+  const frames = Math.round(DUR * FPS);
+  for (let f = 0; f < frames; f++) {
+    frame(f / FPS);
+    await video.add(f / FPS, 1 / FPS);
+  }
+  await sound.add(audio);
+  await output.finalize();
+  const bytes = new Uint8Array(output.target.buffer);
+  // Hand it to Node in 4 MB base64 slices.
+  for (let i = 0; i < bytes.length; i += 4 << 20) {
+    let bin = "";
+    const part = bytes.subarray(i, i + (4 << 20));
+    for (let j = 0; j < part.length; j += 0x8000) bin += String.fromCharCode(...part.subarray(j, j + 0x8000));
+    await window.saveChunk(btoa(bin));
+  }
+  return { frames, audio: aac ? "aac" : "opus" };
+}
+
+window.ready = setup();
+window.render = render;
+window.seek = (t) => frame(t);
+if (!navigator.webdriver) {
+  const btn = document.getElementById("play");
+  btn.hidden = false;
+  btn.onclick = async () => { btn.hidden = true; await window.ready; await play(); btn.hidden = false; };
+}
+</script>
+</body>
+</html>

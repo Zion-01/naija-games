@@ -39,6 +39,8 @@ The mark (`apps/web/src/app/icon.svg`) is a Whot star card on an ochre sun over 
 
 `node apps/web/scripts/brand.mjs` renders everything from the mark: the app icons, the site-wide link preview (`src/app/opengraph-image.png`), the logo lockups (`docs/brand/logo.png`, `logo-on-dark.png`) and a square promo poster for WhatsApp status and socials (`docs/brand/promo-square.png`). Text in the mark must be paths (the renderer has no system fonts). Bump the `CACHE` name in `public/sw.js` after changing the icons.
 
+The 30-second promo video (1080×1920 for WhatsApp status, Reels and TikTok) is code too: `apps/web/scripts/promo/video.html` draws eight scenes on a canvas over a synthesised amapiano-style beat. `node apps/web/scripts/promo/capture.mjs https://naija-games.vercel.app` retakes the phone screenshots from the live site, and `node apps/web/scripts/promo/record.mjs` renders every frame offline into `docs/brand/promo-video.mp4` (H.264 + AAC, about 15 MB, git-ignored) with WebCodecs and Mediabunny in your Chrome. `record.mjs --serve` plays it with sound at http://localhost:4321.
+
 ## Analytics and privacy
 
 Two kinds of numbers, neither of them about a person:
