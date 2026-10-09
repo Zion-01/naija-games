@@ -40,7 +40,7 @@ export function ensureGuest(nickname?: string): Guest {
  * The game server. Set NEXT_PUBLIC_GAME_SERVER_URL in production; in development it is port 2567 on
  * whatever host served the page, so a phone on the same Wi-Fi can play too.
  */
-// KI-3: production must set NEXT_PUBLIC_GAME_SERVER_URL (TLS), or HTTPS pages hit mixed-content blocking.
+// Production sets NEXT_PUBLIC_GAME_SERVER_URL (TLS); without it, HTTPS pages would hit mixed-content blocking.
 export function gameServerUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_SERVER_URL;
   if (configured) return configured.replace(/\/$/, "");
