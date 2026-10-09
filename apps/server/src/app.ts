@@ -3,6 +3,7 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { normalizeCode } from '@naija/online';
 import { authFromEnv, type Authenticator } from './auth';
 import { resultsFromEnv, type ResultSink } from './results';
+import { Metrics, metricsFromEnv, type MetricsSink } from './metrics';
 import { ratingsFromEnv, type RatingSource } from './ratings';
 import { AyoRoom, QueueRoom, WhotRoom, matches, services } from './rooms';
 
@@ -16,15 +17,25 @@ const getRoom = createEndpoint('/rooms/:code', { method: 'GET' }, async (ctx) =>
 
 const health = createEndpoint('/health', { method: 'GET' }, async () => ({ ok: true }));
 
-/** Identity, result saving and ratings default to the environment (SUPABASE_URL, SUPABASE_SECRET_KEY); tests pass their own. */
-export function createServer(opts: { auth?: Authenticator; results?: ResultSink | null; ratings?: RatingSource | null } = {}) {
+/**
+ * Identity, result saving, ratings and the daily counts default to the environment (SUPABASE_URL,
+ * SUPABASE_SECRET_KEY); tests pass their own.
+ */
+export function createServer(
+  opts: { auth?: Authenticator; results?: ResultSink | null; ratings?: RatingSource | null; metrics?: MetricsSink | null } = {},
+) {
   services.auth = opts.auth ?? authFromEnv();
   services.results = opts.results !== undefined ? opts.results : resultsFromEnv();
   services.ratings = opts.ratings !== undefined ? opts.ratings : ratingsFromEnv();
-  return defineServer({
+  services.metrics = new Metrics(opts.metrics !== undefined ? opts.metrics : metricsFromEnv());
+  services.metrics.start();
+  const server = defineServer({
     transport: new WebSocketTransport(),
     rooms: { whot: defineRoom(WhotRoom), ayo: defineRoom(AyoRoom), queue: defineRoom(QueueRoom) },
     routes: createRouter({ getRoom, health }),
     greet: false,
   });
+  // A deploy or restart sends the last minute's counts before the process exits.
+  server.onShutdown(() => services.metrics.stop());
+  return server;
 }

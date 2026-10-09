@@ -41,6 +41,8 @@ export type MatchOptions = {
   now?: () => number;
   /** Called once when a game ends, to save the result. */
   onOver?: (record: MatchRecord) => void;
+  /** Called when a game is dealt (the first one and each rematch), for the anonymous daily counts. */
+  onBegin?: (info: { round: number; computerSeats: number }) => void;
   /**
    * Quick-match: seat i is held for `reserved[i]` (a verified `playerId`); seats past the list go to the computer.
    * Nobody hosts, and the game deals as soon as every held player is in, or after `fillAfterMs` without them.
@@ -94,6 +96,7 @@ export class Match<S, M, V> {
   private readonly rateWindowMs: number;
   private readonly now: () => number;
   private readonly onOver: ((record: MatchRecord) => void) | undefined;
+  private readonly onBegin: MatchOptions['onBegin'];
   private turnTimer: ReturnType<typeof setTimeout> | null = null;
   private turnTimerKey = '';
   private readonly reactTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -118,6 +121,7 @@ export class Match<S, M, V> {
     this.rateWindowMs = opts.rateWindowMs ?? 2000;
     this.now = opts.now ?? Date.now;
     this.onOver = opts.onOver;
+    this.onBegin = opts.onBegin;
     this.reserved = opts.reserved ?? null;
     // A matched player who never shows up gets replaced by the computer, so the other one isn't stuck.
     // If nobody came at all, Colyseus disposes the empty room on its own.
@@ -314,6 +318,7 @@ export class Match<S, M, V> {
     this.moves = 0;
     this.rematch.clear();
     this.asked.clear();
+    this.onBegin?.({ round: this.round, computerSeats: this.seats.filter((s) => s?.kind === 'ai').length });
     this.changed();
   }
 

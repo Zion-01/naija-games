@@ -14,16 +14,24 @@ import {
 import { AuthError, guestAuth, type Authenticator, type Identity } from './auth';
 import { ayoRules, whotRules, type AnyRules } from './games';
 import { Match } from './match';
+import { Metrics } from './metrics';
 import { Matchmaker, type Ticket } from './queue';
 import { DEFAULT_RATING, type RatingSource } from './ratings';
 import type { ResultSink } from './results';
 
-/** How rooms identify players, where finished games go, and where quick-match reads ratings. Set once by `createServer`. */
-export const services: { auth: Authenticator; results: ResultSink | null; ratings: RatingSource | null } = {
+/**
+ * How rooms identify players, where finished games go, where quick-match reads ratings, and the anonymous daily
+ * counts. Set once by `createServer`.
+ */
+export const services: { auth: Authenticator; results: ResultSink | null; ratings: RatingSource | null; metrics: Metrics } = {
   auth: guestAuth,
   results: null,
   ratings: null,
+  metrics: new Metrics(null),
 };
+
+/** Clients in game rooms (players and spectators) and open game rooms, for the daily peaks. */
+const live = { clients: 0, rooms: 0 };
 
 /**
  * Private rooms keyed by their invite code, so the HTTP API can describe a room for link previews.
@@ -41,6 +49,7 @@ const quickSeats = new Map<string, string[]>();
 async function openQuickRoom(game: GameId, players: Ticket[]): Promise<string> {
   const token = randomUUID();
   quickSeats.set(token, players.map((p) => p.playerId));
+  services.metrics.count(players.length > 1 ? 'quick.matched' : 'quick.solo', game);
   try {
     const room = await matchMaker.createRoom(game, { nickname: '', quick: token });
     return room.roomId;
@@ -56,6 +65,8 @@ type GameCreateOptions = CreateOptions & { quick?: unknown };
 
 abstract class GameRoom extends Room {
   match!: Match<unknown, unknown, unknown>;
+  /** Sessions counted in `live.clients`, so a failed join is never subtracted. */
+  private readonly counted = new Set<string>();
 
   protected abstract rules(options: CreateOptions): AnyRules;
 
@@ -68,9 +79,20 @@ abstract class GameRoom extends Room {
     // Enough for fast tapping and catches; anything above this is a broken or abusive client.
     this.maxMessagesPerSecond = 30;
     const seed = (Date.now() ^ (Math.random() * 2 ** 31)) >>> 0;
+    const metrics = services.metrics;
+    const game = rules.id;
+    metrics.count(reserved ? 'room.quick' : 'room.invite', game);
+    metrics.peak('rooms.peak', ++live.rooms);
     this.match = new Match(this.roomId, rules, seed, () => this.sendSnapshots(), {
       reserved,
+      onBegin: ({ round, computerSeats }) => {
+        metrics.count('game.started', game);
+        if (round > 0) metrics.count('game.rematch', game);
+        if (computerSeats > 0) metrics.count('game.with_computer', game);
+      },
       onOver: (record) => {
+        metrics.count('game.finished', game);
+        if (record.players.some((p) => p.abandoned)) metrics.count('game.abandoned', game);
         const save = services.results;
         if (!save || !record.players.some((p) => p.userId)) return;
         save(record).then(
@@ -94,8 +116,9 @@ abstract class GameRoom extends Room {
     this.onMessage(MSG.rematch, (client) => this.match.requestRematch(client.sessionId));
     this.onMessage(MSG.emote, (client, id: unknown) => {
       const result = this.match.emote(client.sessionId, id);
-      if (typeof result === 'string') client.send(MSG.error, { text: result });
-      else this.broadcast(MSG.emote, result);
+      if (typeof result === 'string') return client.send(MSG.error, { text: result });
+      this.broadcast(MSG.emote, result);
+      services.metrics.count('emote.sent', this.match.rules.id);
     });
     // Keepalive (KEEPALIVE_MS): receiving it is the point, so a sleeping-when-idle host keeps this room up.
     this.onMessage(MSG.ping, () => {});
@@ -115,6 +138,8 @@ abstract class GameRoom extends Room {
     } catch (e) {
       throw new ServerError(4000, (e as Error).message);
     }
+    this.counted.add(client.sessionId);
+    services.metrics.peak('players.peak', ++live.clients);
     void this.setMetadata(this.match.summary());
   }
 
@@ -129,11 +154,14 @@ abstract class GameRoom extends Room {
   }
 
   onLeave(client: Client) {
+    if (this.counted.delete(client.sessionId)) live.clients--;
     this.match.leave(client.sessionId);
     void this.setMetadata(this.match.summary());
   }
 
   onDispose() {
+    live.rooms--;
+    live.clients -= this.counted.size;
     this.match.dispose();
     matches.delete(this.roomId);
   }

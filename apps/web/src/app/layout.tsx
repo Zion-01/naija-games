@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CosmeticsStyle } from "@/components/CosmeticsStyle";
+import { PageAnalytics } from "@/components/PageAnalytics";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import "./globals.css";
 
@@ -41,6 +43,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <ServiceWorker />
         <CosmeticsStyle />
+        {/* It reads the search params, which needs a Suspense boundary under Cache Components. */}
+        <Suspense fallback={null}>
+          <PageAnalytics />
+        </Suspense>
       </body>
     </html>
   );

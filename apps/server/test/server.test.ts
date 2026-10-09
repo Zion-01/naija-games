@@ -4,13 +4,15 @@ import type { Snapshot } from '@naija/online';
 import type { whot } from '@naija/engine';
 import { createServer } from '../src/app';
 import { guestAuth } from '../src/auth';
+import { services } from '../src/rooms';
 
 const PORT = 2600 + Math.floor(Math.random() * 300);
 const URL = `http://localhost:${PORT}`;
 let server: ReturnType<typeof createServer>;
 
 beforeAll(async () => {
-  server = createServer({ auth: guestAuth, results: null });
+  // A sink that never gets called in these tests (no flush), so counts stay readable with `peek()`.
+  server = createServer({ auth: guestAuth, results: null, metrics: async () => {} });
   await server.listen(PORT);
 });
 afterAll(async () => {
@@ -100,6 +102,13 @@ describe('private Whot room over WebSockets', () => {
     const seen = new Promise((resolve) => watcher.onMessage('emote', resolve));
     guest.send('emote', 'fire');
     expect(await seen).toEqual({ seat: 1, id: 'fire' });
+    // Anonymous daily counts: the room, the deal and the emote, with nothing about who.
+    const counts = services.metrics.peek();
+    for (const metric of ['room.invite', 'game.started', 'emote.sent']) {
+      expect(counts).toContainEqual(expect.objectContaining({ metric, game: 'ayo' }));
+    }
+    expect(counts.find((c) => c.metric === 'players.peak')!.value).toBeGreaterThanOrEqual(3);
+    expect(JSON.stringify(counts)).not.toMatch(new RegExp(`${code}|Emeka|guest-`));
     watcher.send('emote', 'laugh');
     await new Promise((r) => setTimeout(r, 200));
     expect(w.box.errors).toEqual(['Na only players fit send emote']);

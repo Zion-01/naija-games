@@ -46,4 +46,4 @@ Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 m
 ## Housekeeping
 
 - `next dev` re-adds an agent-rules block to `apps/web/AGENTS.md`. Committing it is harmless (see that file).
-- The server logs auto-play failures with `console.error` only. There are no metrics or structured logs yet (Phase 5).
+- The server logs auto-play failures with `console.error` only. Gameplay totals go to `daily_counts` (Phase 5c), but there are no structured logs or error metrics yet.

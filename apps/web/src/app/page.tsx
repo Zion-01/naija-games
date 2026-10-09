@@ -90,6 +90,9 @@ export default function Home() {
           Play the computer, pass the phone, or pick 🌍 Online in a game to send your guy a WhatsApp link.
         </p>
         <InstallButton />
+        <p className="mt-auto text-center text-xs text-muted">
+          No ads, no tracking cookies. We count page visits and games played, never who played them.
+        </p>
       </div>
     </main>
   );

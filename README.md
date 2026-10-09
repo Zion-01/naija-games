@@ -31,6 +31,18 @@ Playwright needs a Chromium: run `pnpm --filter web exec playwright install chro
 
 `/style` (🎨 in the lobby) picks a Whot card back and an Ayo board. The first ones are free; the rest unlock with wins against the computer, counted on the device (`src/lib/cosmetics.ts`). There's no shop and nothing random, and only you see your choice: it just sets CSS variables on the page.
 
+## Analytics and privacy
+
+Two kinds of numbers, neither of them about a person:
+
+- **Page views**: Vercel Web Analytics (`components/PageAnalytics.tsx`), which sets no cookies. Before a view is sent, room codes are replaced with `[code]` and query strings are dropped (`src/lib/analytics.ts`). It only reports from production, and only once Web Analytics is enabled on the Vercel project (Project → Analytics → Enable). The service worker never caches `/_vercel/*`.
+- **Gameplay totals**: the game server counts rooms (invite or quick), games started, finished and abandoned, rematches, games with computer seats, quick-match pairings and solo fallbacks, emotes, and the day's peak players and rooms (`apps/server/src/metrics.ts`). They're summed in memory and sent once a minute (and on shutdown) to the `daily_counts` table through `add_daily_counts`, which only the server's secret key can call. A row is a Lagos day, a metric, a game and a number: no ids, names or codes. Offline games aren't counted, because they never touch a server.
+
+```sql
+-- Last week, per game:
+select day, metric, game, value from daily_counts where day > current_date - 7 order by day desc, metric, game;
+```
+
 ## Online play
 
 Pick **🌍 Online** in a game's setup, enter a nickname and tap **Invite your guy**. You land on `/play/ABCD` with a WhatsApp share button; the link preview says "Tunde don challenge you for Whot!". The host can start early and let the computer fill the open seats.
