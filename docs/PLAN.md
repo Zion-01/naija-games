@@ -14,7 +14,7 @@ The goal is a mobile-first PWA where you can start a game against the computer i
 | Monorepo | pnpm workspaces, TypeScript everywhere | One rules engine shared by the client, server and AI |
 | Web | Next.js (App Router) + Tailwind, Framer Motion for card and seed animation | Same stack as lagoslife.app; deploys to Vercel |
 | Game server | **Colyseus** (Node) on Fly.io or Railway | The server is authoritative, and it has rooms, matchmaking and reconnection built in. Its per-client state filtering keeps Whot hands hidden from other players |
-| Auth + data | Supabase (guest/anonymous sign-in, then Google + phone OTP; Postgres for profiles, match history and ratings) | Free tier; guests can play before they sign up |
+| Auth + data | Supabase (guest/anonymous sign-in, then Google; Postgres for profiles, match history and ratings) | Free tier; guests can play before they sign up |
 | Tests | Vitest (engine), Playwright (two-browser online match) | |
 
 New project folder: `C:\Users\M'soft\naija-games` (git repo).
@@ -66,7 +66,7 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 > Status: Phases 0–3 are done. Gaps left in Phase 3 (deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 **Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match (done), **4d** weekly leaderboards (done).
-- Upgrade a guest to Google or phone OTP and keep their history. Profiles with an Elo rating per game.
+- Upgrade a guest to Google and keep their history (phone OTP was dropped in favour of Google only). Profiles with an Elo rating per game.
 - Quick-match queue (matched by rating), and weekly leaderboards ("Oga of the Week").
 - How 4c (quick-match) works:
   - "Find me opponent" joins the `queue` room (`QueueRoom` in `apps/server/src/rooms.ts`). Its `onAuth` reads the player's rating from `ratings` with the secret key, keyed by the verified `userId` (1200 without a row, or without Supabase). The pairing logic is `Matchmaker` in `apps/server/src/queue.ts` (no Colyseus imports, unit-tested with fake timers).

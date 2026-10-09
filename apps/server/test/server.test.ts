@@ -89,6 +89,16 @@ describe('private Whot room over WebSockets', () => {
     await Promise.all([host.leave(), back.leave(), watcher.leave()]);
   });
 
+  it('accepts keepalive pings silently, so a waiting room stays up on a host that sleeps when idle', async () => {
+    const host = await new Client(URL).create('ayo', { nickname: 'Ada', guestId: 'guest-ada-ping1' });
+    const h = watch(host);
+    await h.until((s) => s.status === 'waiting');
+    host.send('ping');
+    await new Promise((r) => setTimeout(r, 200));
+    expect(h.box.errors).toEqual([]);
+    await host.leave();
+  });
+
   it('does not hand out private rooms to random matchmaking', async () => {
     const host = await new Client(URL).create('ayo', { nickname: 'Ada', guestId: 'guest-ada-0001' });
     await expect(new Client(URL).join('ayo', { nickname: 'X', guestId: 'guest-x-00001' })).rejects.toThrow();

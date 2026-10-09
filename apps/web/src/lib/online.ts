@@ -1,5 +1,6 @@
 import { Client, type Room } from "@colyseus/sdk";
 import {
+  KEEPALIVE_MS,
   MSG,
   cleanNickname,
   type AyoWireMove,
@@ -47,6 +48,20 @@ export function gameServerUrl(): string {
   return `${window.location.protocol}//${window.location.hostname}:2567`;
 }
 
+let wokeAt = 0;
+
+/**
+ * Starts waking the game server (a free host sleeps when nobody is playing and takes up to a minute to start) as
+ * soon as someone looks like they'll play online, so it's usually up by the time they tap. Fire and forget.
+ */
+export function wakeServer() {
+  const now = Date.now();
+  if (now - wokeAt < 5 * 60 * 1000) return;
+  wokeAt = now;
+  // no-cors: we only need the request to arrive, not to read the answer.
+  fetch(`${gameServerUrl()}/health`, { mode: "no-cors", cache: "no-store" }).catch(() => {});
+}
+
 export type ConnectionState =
   | { status: "connecting" }
   | { status: "open"; snapshot: Snapshot | null; reconnecting: boolean }
@@ -65,6 +80,7 @@ export class Connection {
   private room: Room | null = null;
   private users = 0;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
+  private keepalive: ReturnType<typeof setInterval> | null = null;
 
   constructor(readonly code: string) {}
 
@@ -89,8 +105,12 @@ export class Connection {
     room.onDrop(() => this.patchOpen({ reconnecting: true }));
     room.onReconnect(() => this.patchOpen({ reconnecting: false }));
     room.onLeave(() => {
+      if (this.keepalive) clearInterval(this.keepalive);
+      this.keepalive = null;
       if (this.state.status === "open") this.set({ status: "closed" });
     });
+    // A host waiting for their guy sends nothing, and a free server host sleeps after 15 quiet minutes.
+    this.keepalive = setInterval(() => room.send(MSG.ping), KEEPALIVE_MS);
   }
 
   fail(error: string) {
@@ -98,7 +118,7 @@ export class Connection {
   }
 
   send(type: typeof MSG.move, move: WhotWireMove | AyoWireMove): void;
-  send(type: typeof MSG.start | typeof MSG.rematch): void;
+  send(type: typeof MSG.start | typeof MSG.rematch | typeof MSG.ping): void;
   send(type: string, payload?: unknown) {
     this.room?.send(type, payload);
   }

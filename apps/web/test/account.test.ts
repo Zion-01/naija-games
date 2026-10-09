@@ -1,20 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePhone, toPlayedGames } from "../src/lib/account";
-
-describe("normalizePhone", () => {
-  it("accepts Nigerian numbers the way people type them", () => {
-    for (const typed of ["0803 123 4567", "803-123-4567", "2348031234567", "+234 (803) 123 4567"]) {
-      expect(normalizePhone(typed)).toBe("+2348031234567");
-    }
-  });
-
-  it("keeps other countries with a leading +, and refuses incomplete numbers", () => {
-    expect(normalizePhone("+44 7700 900123")).toBe("+447700900123");
-    expect(normalizePhone("0803 123")).toBeNull();
-    expect(normalizePhone("+234 803 123 45678")).toBeNull();
-    expect(normalizePhone("call me")).toBeNull();
-  });
-});
+import { toPlayedGames } from "../src/lib/account";
 
 describe("toPlayedGames", () => {
   it("finds your seat and lists everyone else at the table", () => {

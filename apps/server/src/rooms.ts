@@ -92,6 +92,8 @@ abstract class GameRoom extends Room {
       if (error) client.send(MSG.error, { text: error });
     });
     this.onMessage(MSG.rematch, (client) => this.match.requestRematch(client.sessionId));
+    // Keepalive (KEEPALIVE_MS): receiving it is the point, so a sleeping-when-idle host keeps this room up.
+    this.onMessage(MSG.ping, () => {});
   }
 
   async onAuth(_client: Client, options: Partial<JoinOptions> = {}, context: AuthContext): Promise<Identity> {
