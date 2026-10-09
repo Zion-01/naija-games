@@ -70,6 +70,9 @@ export type AyoWireMove = { type: 'sow'; pit: number };
 type ViewOf<G extends GameId> = G extends 'whot' ? whot.WhotView : ayo.AyoState;
 type MoveOf<G extends GameId> = G extends 'whot' ? whot.WhotMove : ayo.AyoMove;
 
+/** A rated seat's Elo before and after a finished game. */
+export type RatingChange = { seat: number; before: number; after: number };
+
 /** Everything one client sees, sent after every change. */
 export type Snapshot<G extends GameId = GameId> = {
   game: G;
@@ -94,6 +97,11 @@ export type Snapshot<G extends GameId = GameId> = {
   round: number;
   /** Server clock when the snapshot was made, so clients can correct the deadline for clock skew. */
   now: number;
+  /**
+   * Rating changes for the game that just ended, once the server has saved it. Null before then, and for games
+   * that aren't rated (fewer than two players with accounts).
+   */
+  ratings: RatingChange[] | null;
 };
 
 /** Public facts about a room, served at GET /rooms/:code for invite pages and link previews. */

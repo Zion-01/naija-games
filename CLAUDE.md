@@ -9,7 +9,8 @@ Read `README.md` for the layout, `docs/PLAN.md` for the phased roadmap, and `doc
 - ✅ **Phase 3, online multiplayer**: `packages/online` (protocol), `apps/server` (`Match` + `WhotRoom`/`AyoRoom`, `GET /rooms/:code`), `/play/[code]` with WhatsApp invite + dynamic OG image, turn timers with Easy-AI auto-play, 60s reconnect then AI takeover, guest-id seat reclaim, spectators, rematch, rate limits. Server tests (unit + real WebSocket), Playwright e2e (`pnpm e2e`).
 - ✅ **Phase 4a, accounts**: Supabase project `naija-games` (ref `xotjtshlesompmxnhjke`, eu-west-2). Anonymous sign-in on first online play, upgrade to Google/phone on `/profile`, server verifies the JWT in `onAuth`, results saved via `record_match`. Migrations in `supabase/migrations/`.
 - 🔴 Launch blockers: see the "Before launch" table in `docs/KNOWN_ISSUES.md` (dashboard sign-in settings, server secret key, server deploy, production URL, real-phone check, single-process rooms).
-- ⏭️ **Next: Phase 4b** (Elo per game in a `ratings` table, updated inside `record_match`), then 4c quick-match, 4d weekly leaderboards.
+- ✅ **Phase 4b, Elo**: `ratings` table (per user per game), updated inside `record_match`, which returns each rated seat's change; the server puts it in `Snapshot.ratings` for the game-over screen. Maths checked by `supabase/tests/ratings.test.sql`.
+- ⏭️ **Next: Phase 4c** (quick-match queue by rating), then 4d weekly leaderboards ("Oga of the Week").
 
 ## Decisions already made (don't revisit)
 - Web-first, Next.js. Online multiplayer comes in v1 (Phase 3), after the offline build.
@@ -18,7 +19,7 @@ Read `README.md` for the layout, `docs/PLAN.md` for the phased roadmap, and `doc
 - "Check up" is automatic when you play your last card. Only "Last card" is enforced, through `catch` moves.
 
 ## Gotchas
-- Supabase: apply schema changes as a new file in `supabase/migrations/` **and** to the project (Supabase MCP `apply_migration`), then run the security advisors. Only the game server writes results (secret key); players never get insert rights. Functions in `public` must `revoke execute ... from public, anon, authenticated` unless players should call them.
+- Supabase: apply schema changes as a new file in `supabase/migrations/` **and** to the project (Supabase MCP `apply_migration`), then run the security advisors and the SQL tests in `supabase/tests/` (via `execute_sql`; they roll back). The repo files hold the final schema; the project's migration history has MCP-generated versions (and one extra fix entry for `record_match`), so don't `supabase db push` without reconciling. In PL/pgSQL, only parameters can be qualified with the function name (`record_match.game`); name declared variables so they can't clash with columns (`new_match_id`). Only the game server writes results (secret key); players never get insert rights. Functions in `public` must `revoke execute ... from public, anon, authenticated` unless players should call them.
 - Identity: `Match.join` takes a verified `Identity` (`playerId`, `userId`) from `onAuth`; never trust ids from join options. Without `SUPABASE_URL` the server uses `guestAuth` (dev and e2e only; refused in production). `pnpm e2e` blanks the Supabase env vars so it always runs in guest mode.
 - Tool versions are newer than most training data: **Next 16.4** (`apps/web/AGENTS.md`: read `node_modules/next/dist/docs/` before writing Next code), **Colyseus 0.18** (`defineServer({ transport, rooms })`; check `node_modules/@colyseus/core/build/*.d.ts`), TypeScript 7, Vitest 5, pnpm 12.
 - Don't install the `colyseus` meta-package: it pulls `uWebSockets.js` from git, which pnpm blocks. Use `@colyseus/core` + `@colyseus/ws-transport`.

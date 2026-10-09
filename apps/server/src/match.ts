@@ -5,6 +5,7 @@ import {
   cleanNickname,
   type GameId,
   type JoinOptions,
+  type RatingChange,
   type RoomStatus,
   type RoomSummary,
   type SeatInfo,
@@ -75,6 +76,7 @@ export class Match<S, M, V> {
   deadline: number | null = null;
   readonly rematch = new Set<number>();
   startedAt = 0;
+  ratings: RatingChange[] | null = null;
 
   private readonly rng: Rng;
   private readonly aiDelayMs: number;
@@ -201,6 +203,13 @@ export class Match<S, M, V> {
     return this.play(move);
   }
 
+  /** The saved result's rating changes, shown on the game-over screen. Ignored if a rematch already started. */
+  setRatings(round: number, changes: RatingChange[]) {
+    if (round !== this.round || this.status !== 'over' || changes.length === 0) return;
+    this.ratings = changes;
+    this.changed();
+  }
+
   requestRematch(sessionId: string) {
     const seat = this.seatOf(sessionId);
     if (seat < 0 || this.status !== 'over') return;
@@ -224,6 +233,7 @@ export class Match<S, M, V> {
       rematch: [...this.rematch],
       round: this.round,
       now: this.now(),
+      ratings: this.ratings,
     };
   }
 
@@ -246,6 +256,7 @@ export class Match<S, M, V> {
     this.state = this.rules.create((this.seed + this.round * 7919) >>> 0, this.round);
     this.status = 'playing';
     this.startedAt = this.now();
+    this.ratings = null;
     this.last = null;
     this.moves = 0;
     this.rematch.clear();

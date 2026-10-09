@@ -65,7 +65,7 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 
 > Status: Phases 0–3 are done. Gaps left in Phase 3 (deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
-**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings, **4c** quick-match, **4d** weekly leaderboards.
+**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match, **4d** weekly leaderboards.
 - Upgrade a guest to Google or phone OTP and keep their history. Profiles with an Elo rating per game.
 - Quick-match queue (matched by rating), and weekly leaderboards ("Oga of the Week").
 - Supabase tables: `profiles`, `matches`, `match_players`, `ratings`, with row-level security. The server writes results using the service key.

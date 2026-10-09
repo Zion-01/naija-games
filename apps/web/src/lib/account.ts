@@ -216,6 +216,8 @@ export type PlayedGame = {
   endedAt: string;
   result: GameResult;
   abandoned: boolean;
+  /** Your rating before and after, if the game was rated (two or more players with accounts). */
+  rating: { before: number; after: number } | null;
   /** Everyone else at the table. */
   others: { name: string; kind: "human" | "ai"; result: GameResult }[];
 };
@@ -224,14 +226,23 @@ type MatchRow = {
   id: string;
   game: "whot" | "ayo";
   ended_at: string;
-  match_players: { seat: number; user_id: string | null; name: string; kind: "human" | "ai"; result: GameResult; abandoned: boolean }[];
+  match_players: {
+    seat: number;
+    user_id: string | null;
+    name: string;
+    kind: "human" | "ai";
+    result: GameResult;
+    abandoned: boolean;
+    rating_before: number | null;
+    rating_after: number | null;
+  }[];
 };
 
 /** Your recent online games. Row-level security only returns games you sat in. */
 export async function recentGames(userId: string, limit = 20): Promise<PlayedGame[]> {
   const { data, error } = await need()
     .from("matches")
-    .select("id, game, ended_at, match_players(seat, user_id, name, kind, result, abandoned)")
+    .select("id, game, ended_at, match_players(seat, user_id, name, kind, result, abandoned, rating_before, rating_after)")
     .order("ended_at", { ascending: false })
     .limit(limit)
     .overrideTypes<MatchRow[], { merge: false }>();
@@ -241,6 +252,29 @@ export async function recentGames(userId: string, limit = 20): Promise<PlayedGam
   }
   return toPlayedGames(data, userId);
 }
+
+/** Your rating and all-time online record in one game. */
+export type Rating = { rating: number; ratedGames: number; games: number; wins: number; losses: number; draws: number };
+
+/** Your ratings per game; a game you never played online is missing. Ratings are public, so this works for anyone. */
+export async function ratingsFor(userId: string): Promise<Partial<Record<"whot" | "ayo", Rating>>> {
+  const { data, error } = await need()
+    .from("ratings")
+    .select("game, rating, rated_games, games, wins, losses, draws")
+    .eq("user_id", userId)
+    .overrideTypes<
+      { game: "whot" | "ayo"; rating: number; rated_games: number; games: number; wins: number; losses: number; draws: number }[],
+      { merge: false }
+    >();
+  if (error) {
+    console.error(error);
+    throw new AccountError("We no fit load your rating. Try again.");
+  }
+  return Object.fromEntries(data.map(({ game, rated_games, ...r }) => [game, { ...r, ratedGames: rated_games }]));
+}
+
+/** Ratings settle after this many rated games (the database's K-factor drops then). */
+export const PROVISIONAL_GAMES = 20;
 
 export function toPlayedGames(rows: MatchRow[], userId: string): PlayedGame[] {
   return rows.flatMap((row) => {
@@ -254,6 +288,7 @@ export function toPlayedGames(rows: MatchRow[], userId: string): PlayedGame[] {
         endedAt: row.ended_at,
         result: me.result,
         abandoned: me.abandoned,
+        rating: me.rating_before !== null && me.rating_after !== null ? { before: me.rating_before, after: me.rating_after } : null,
         others: players.filter((p) => p !== me).map(({ name, kind, result }) => ({ name, kind, result })),
       },
     ];

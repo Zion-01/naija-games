@@ -1,8 +1,12 @@
+import type { RatingChange } from '@naija/online';
 import type { MatchRecord } from './match';
 
-export type ResultSink = (record: MatchRecord) => Promise<void>;
+/** What saving a game gives back: each rated seat's rating change (empty when the game wasn't rated). */
+export type SavedResult = { ratings: RatingChange[] };
 
-/** Saves finished games through the `record_match` database function, using the project's secret key. */
+export type ResultSink = (record: MatchRecord) => Promise<SavedResult>;
+
+/** Saves finished games through the `record_match` database function, which also updates Elo ratings. */
 export function supabaseResults(supabaseUrl: string, secretKey: string, fetchImpl: typeof fetch = fetch): ResultSink {
   const url = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/rpc/record_match`;
   return async (record) => {
@@ -25,6 +29,8 @@ export function supabaseResults(supabaseUrl: string, secretKey: string, fetchImp
       }),
     });
     if (!res.ok) throw new Error(`record_match failed: ${res.status} ${await res.text()}`);
+    const body = (await res.json()) as { ratings?: RatingChange[] };
+    return { ratings: Array.isArray(body.ratings) ? body.ratings : [] };
   };
 }
 
