@@ -11,7 +11,7 @@ Read `README.md` for the layout, `docs/PLAN.md` for the phased roadmap, and `doc
 - ✅ **Phase 4b, Elo**: `ratings` table (per user per game), updated inside `record_match`, which returns each rated seat's change; the server puts it in `Snapshot.ratings` for the game-over screen. Maths checked by `supabase/tests/ratings.test.sql`.
 - 🔴 Launch blockers: see the "Before launch" table in `docs/KNOWN_ISSUES.md` (dashboard sign-in settings, server secret key, server deploy, production URL, real-phone check, single-process rooms).
 - ⏭️ **Next: Phase 4c** (quick-match queue by rating; notes in `docs/PLAN.md`), then 4d weekly leaderboards ("Oga of the Week").
-- 🌿 **Branches:** Phase 4 ships as stacked PRs, one per sub-phase (4a = Zion-01/naija-games#5 and 4b = #6 are merged). Branch 4c from `main`. If an earlier sub-phase PR is still open when you start the next, branch from it and open the PR against it; after it squash-merges, rebase with `git rebase --onto origin/main <old-base-commit> <branch>` and retarget.
+- 🌿 **Branches:** Phase 4 ships as stacked PRs, one per sub-phase (4a = Zion-01/naija-games#5 and 4b = #7 are merged; #6 was the same 4b, closed when its base branch was deleted). Branch 4c from `main`. If an earlier sub-phase PR is still open when you start the next, branch from it and open the PR against it; after it squash-merges, rebase with `git rebase --onto origin/main <old-base-commit> <branch>` and retarget.
 - 🔑 `SUPABASE_SECRET_KEY` is **not set** in `apps/server/.env.local` yet (KI-23), so the local server can't save results or ratings. Ask the user for it before testing anything that needs saved games; don't try to fetch it.
 
 ## Decisions already made (don't revisit)
