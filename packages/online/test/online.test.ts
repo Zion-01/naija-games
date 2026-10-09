@@ -33,13 +33,15 @@ describe('wire moves', () => {
       lastCard: true,
     });
     expect(parseWhotMove({ type: 'play', cardId: 'whot-20-1', callShape: 'star' }, 0, 2)).toMatchObject({ callShape: 'star' });
+    expect(parseWhotMove({ type: 'play', cardId: 'star-7', stack: ['cross-7'] }, 0, 2)).toMatchObject({ stack: ['cross-7'] });
     expect(parseAyoMove({ type: 'sow', pit: 7, player: 0 }, 1)).toEqual({ type: 'sow', player: 1, pit: 7 });
   });
 
   it('rejects malformed moves', () => {
     for (const bad of [null, 'draw', {}, { type: 'hack' }, { type: 'play' }, { type: 'play', cardId: 'x'.repeat(40) },
       { type: 'play', cardId: 'a', callShape: 'whot' }, { type: 'play', cardId: 'a', lastCard: 'yes' }, { type: 'catch', target: 5 },
-      { type: 'catch', target: 0.5 }]) {
+      { type: 'catch', target: 0.5 }, { type: 'play', cardId: 'a', stack: 'b' }, { type: 'play', cardId: 'a', stack: [1] },
+      { type: 'play', cardId: 'a', stack: ['b', 'c', 'd', 'e', 'f'] }]) {
       expect(parseWhotMove(bad, 0, 4)).toBeNull();
     }
     for (const bad of [{ type: 'sow', pit: 12 }, { type: 'sow', pit: -1 }, { type: 'sow', pit: '3' }, { type: 'draw' }]) {

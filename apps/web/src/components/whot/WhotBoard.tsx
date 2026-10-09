@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
 import { LINES } from "@/lib/voice";
 import type { WhotSeat } from "@/lib/whot-session";
-import { CardBack, ShapeGlyph, WhotCard } from "./WhotCard";
+import { CardBack, ShapeGlyph, WhotCard, cardLabel } from "./WhotCard";
 
 export type BoardSeat = WhotSeat & { connected?: boolean };
 
@@ -38,36 +38,69 @@ export function WhotBoard({
   handLabel: string;
   /** Seconds before the server plays for whoever is on turn. */
   secondsLeft?: number | null;
-  onPlay: (cardId: string, lastCard: boolean, callShape?: whot.CallableShape) => boolean;
+  /** `stack` holds the extra cards of the same number played on top of `cardId`, in order. */
+  onPlay: (cardId: string, stack: string[], lastCard: boolean, callShape?: whot.CallableShape) => boolean;
   onDraw: () => void;
   onCatch: (target: number) => void;
   onInvalid: (text: string) => void;
 }) {
   // KI-9: online, this is cleared before the server confirms the move. KI-10: survives a seat change in pass-and-play.
   const [lastCardCalled, setLastCardCalled] = useState(false);
-  const [choosingShape, setChoosingShape] = useState<whot.Card | null>(null);
+  const [choosingShape, setChoosingShape] = useState<whot.Card[] | null>(null);
+  // Cards picked for a stack, lead first. Tied to the turn, so it lapses by itself when the turn moves on.
+  const [picked, setPicked] = useState<{ turn: number; ids: string[] }>({ turn: -1, ids: [] });
 
   const me = view.me;
   const playable = new Set(myTurn ? view.myHand.filter((c) => whot.canPlay(view, c)).map((c) => c.id) : []);
-  const needsLastCard = myTurn && view.myHand.length === 2;
+  const selected =
+    myTurn && picked.turn === view.turn
+      ? picked.ids.flatMap((id) => view.myHand.filter((c) => c.id === id))
+      : [];
+  const lead = selected[0] ?? null;
+  const needsLastCard = myTurn && view.myHand.length - Math.max(selected.length, 1) === 1;
   const name = (p: number) => seats[p]?.name ?? `Player ${p + 1}`;
+  const plural = (card: whot.Card) => (card.number === whot.WHOT ? "Whots" : `${card.number}s`);
+  const select = (ids: string[]) => setPicked({ turn: view.turn, ids });
 
-  function playCard(card: whot.Card) {
+  function tapCard(card: whot.Card) {
     if (!myTurn) return;
+    if (lead) {
+      // Tapping the lead again drops the whole stack; tapping another picked card just drops that one.
+      if (selected.includes(card)) return select(card === lead ? [] : selected.filter((c) => c !== card).map((c) => c.id));
+      if (card.number !== lead.number) return onInvalid(`Na only ${plural(lead)} you fit stack on top`);
+      sfx("tap");
+      return select([...selected, card].map((c) => c.id));
+    }
     if (!playable.has(card.id)) {
       onInvalid(view.pending ? `Defend with ${view.pending.number} or pick ${view.pending.amount}` : "That card no match");
       return;
     }
-    if (card.number === whot.WHOT) {
-      setChoosingShape(card);
+    if (view.myHand.some((c) => c !== card && c.number === card.number)) {
+      sfx("tap");
+      return select([card.id]);
+    }
+    playCards([card]);
+  }
+
+  function playCards(cards: whot.Card[]) {
+    if (cards[0]!.number === whot.WHOT) {
+      setChoosingShape(cards);
       return;
     }
-    if (onPlay(card.id, lastCardCalled)) setLastCardCalled(false);
+    send(cards);
+  }
+
+  function send(cards: whot.Card[], shape?: whot.CallableShape) {
+    const [first, ...rest] = cards;
+    if (onPlay(first!.id, rest.map((c) => c.id), lastCardCalled, shape)) {
+      setLastCardCalled(false);
+      select([]);
+    }
   }
 
   function callShape(shape: whot.CallableShape) {
     if (!choosingShape) return;
-    if (onPlay(choosingShape.id, lastCardCalled, shape)) setLastCardCalled(false);
+    send(choosingShape, shape);
     setChoosingShape(null);
   }
 
@@ -194,22 +227,50 @@ export function WhotBoard({
               </button>
             </div>
           </div>
-          <div className="-mx-3 overflow-x-auto px-3 pb-2 pt-3">
+          {lead && (
+            <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface/80 px-3 py-2 shadow-sm">
+              <span className="text-sm font-semibold">
+                {selected.length === 1 ? `Tap your other ${plural(lead)} to stack am` : `${selected.length} cards · the last one go top`}
+              </span>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={() => select([])} className="rounded-full px-3 py-1.5 text-sm font-semibold text-muted">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => playCards(selected)}
+                  className="rounded-full bg-palm px-3 py-1.5 text-sm font-black text-white"
+                >
+                  {selected.length === 1 ? "Play am" : `Play ${selected.length}`}
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="-mx-3 overflow-x-auto px-3 pb-2 pt-5">
             <div className="flex w-max min-w-full justify-center">
               {!revealed ? (
                 <p className="py-8 text-muted">Cards hidden</p>
               ) : (
                 view.myHand.map((card, i) => {
-                  const ok = playable.has(card.id);
+                  const order = selected.indexOf(card);
+                  const ok = lead ? card.number === lead.number : playable.has(card.id);
                   return (
                     <button
                       key={card.id}
                       type="button"
-                      onClick={() => playCard(card)}
-                      className={`transition ${i ? "-ml-3" : ""} ${myTurn && ok ? "-translate-y-2 hover:-translate-y-4" : ""}`}
-                      aria-label={`Play ${card.shape === "whot" ? "Whot 20" : `${card.shape} ${card.number}`}`}
+                      onClick={() => tapCard(card)}
+                      aria-pressed={lead ? order >= 0 : undefined}
+                      className={`relative transition ${i ? "-ml-3" : ""} ${
+                        order >= 0 ? "z-10 -translate-y-5" : myTurn && ok ? "-translate-y-2 hover:-translate-y-4" : ""
+                      }`}
+                      aria-label={lead ? `${order >= 0 ? "Unselect" : ok ? "Stack" : "Can't stack"} ${cardLabel(card)}` : `Play ${cardLabel(card)}`}
                     >
                       <WhotCard card={card} dim={myTurn && !ok} />
+                      {order >= 0 && (
+                        <span className="absolute -right-1 -top-2 grid size-6 place-items-center rounded-full bg-ochre text-xs font-black text-black shadow">
+                          {order + 1}
+                        </span>
+                      )}
                     </button>
                   );
                 })
@@ -222,7 +283,7 @@ export function WhotBoard({
       {choosingShape && (
         <Modal>
           <h2 className="text-2xl font-black">Wetin you need?</h2>
-          <p className="mt-1 text-muted">Call the shape for your Whot.</p>
+          <p className="mt-1 text-muted">Call the shape for your {choosingShape.length > 1 ? `${choosingShape.length} Whots` : "Whot"}.</p>
           <div className="mt-4 grid grid-cols-5 gap-2">
             {whot.CALLABLE_SHAPES.map((shape) => (
               <button

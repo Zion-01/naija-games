@@ -52,7 +52,9 @@ describe('private Whot room over WebSockets', () => {
     // Nobody receives another player's cards.
     const handB = (sb.view as whot.WhotView).myHand.map((c) => c.id);
     expect(handB.some((id) => JSON.stringify(sa).includes(`"${id}"`))).toBe(false);
-    expect(sa.deadline! - sa.now).toBe(20_000);
+    // The deadline is set a moment before the snapshot is stamped, so allow a few ms.
+    expect(sa.deadline! - sa.now).toBeGreaterThan(19_950);
+    expect(sa.deadline! - sa.now).toBeLessThanOrEqual(20_000);
 
     // Out of turn: refused. On turn: played, and both sides see it.
     guest.send('move', { type: 'draw' });

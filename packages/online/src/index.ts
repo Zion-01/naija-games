@@ -59,7 +59,7 @@ export type JoinOptions = { nickname: string; guestId: string; spectate?: boolea
 export type CreateOptions = JoinOptions & { whot?: Partial<WhotRoomOptions> };
 
 export type WhotWireMove =
-  | { type: 'play'; cardId: string; callShape?: whot.CallableShape; lastCard?: boolean }
+  | { type: 'play'; cardId: string; stack?: string[]; callShape?: whot.CallableShape; lastCard?: boolean }
   | { type: 'draw' }
   | { type: 'catch'; target: number };
 export type AyoWireMove = { type: 'sow'; pit: number };
@@ -123,10 +123,14 @@ export function parseWhotMove(raw: unknown, seat: number, players: number): whot
     case 'catch':
       return isInt(m.target, 0, players - 1) ? { type: 'catch', player: seat, target: m.target } : null;
     case 'play': {
-      if (typeof m.cardId !== 'string' || m.cardId.length === 0 || m.cardId.length > 12) return null;
+      const isId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 12;
+      if (!isId(m.cardId)) return null;
+      // At most five cards share a number, so a stack adds at most four.
+      if (m.stack !== undefined && !(Array.isArray(m.stack) && m.stack.length <= 4 && m.stack.every(isId))) return null;
       if (m.callShape !== undefined && !whot.CALLABLE_SHAPES.includes(m.callShape as whot.CallableShape)) return null;
       if (m.lastCard !== undefined && typeof m.lastCard !== 'boolean') return null;
       const move: whot.WhotMove = { type: 'play', player: seat, cardId: m.cardId, lastCard: m.lastCard === true };
+      if (Array.isArray(m.stack) && m.stack.length > 0) move.stack = m.stack.slice();
       if (m.callShape !== undefined) move.callShape = m.callShape as whot.CallableShape;
       return move;
     }

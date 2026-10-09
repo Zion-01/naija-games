@@ -10,6 +10,8 @@ export const LINES = {
   stacked: (n: number) => `E don stack! Pick ${n}!`,
   suspension: (who: string) => `Suspension! ${who}, siddon there.`,
   generalMarket: "General market!",
+  generalMarketStack: (n: number) => `General market! Everybody pick ${n}.`,
+  combo: (n: number) => (n === 2 ? "Double!" : n === 3 ? "Triple!" : `${n} cards one time!`),
   callShape: (shape: string) => `I need ${shape}!`,
   lastCard: "Last card!",
   caught: (catcher: string, target: string) => `${catcher} catch ${target}! No last card: pick two.`,

@@ -38,6 +38,7 @@ export function whotCallouts(
   } else {
     const card = whot.topCard(next);
     const special = (text: string): Callout => ({ text, sfx: "special", speak: true });
+    const count = 1 + (move.stack?.length ?? 0);
     switch (card.number) {
       case whot.HOLD_ON:
         out.push(special(LINES.holdOn));
@@ -51,15 +52,22 @@ export function whotCallouts(
         else out.push(special(LINES.pickThree));
         break;
       }
-      case whot.SUSPENSION:
-        out.push(special(LINES.suspension(name(whot.nextSeat(next, move.player, 1)))));
+      case whot.SUSPENSION: {
+        // Matches the engine: each 8 skips one more seat, but never past the player.
+        const skipped = Array.from({ length: Math.min(count, next.players - 1) }, (_, i) =>
+          name(whot.nextSeat(next, move.player, i + 1)),
+        );
+        out.push(special(LINES.suspension(skipped.join(" & "))));
         break;
+      }
       case whot.GENERAL_MARKET:
-        out.push(special(LINES.generalMarket));
+        out.push(special(count > 1 ? LINES.generalMarketStack(count) : LINES.generalMarket));
         break;
       case whot.WHOT:
         if (move.callShape) out.push(special(LINES.callShape(move.callShape)));
         break;
+      default:
+        if (count > 1) out.push(special(LINES.combo(count)));
     }
     if (move.lastCard && handCount(next, move.player) === 1) {
       out.push({ text: LINES.lastCard, sfx: "special", speak: true, tone: "info" });

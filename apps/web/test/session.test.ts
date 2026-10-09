@@ -34,6 +34,20 @@ describe("whotCallouts", () => {
     expect(whotCallouts(s1, { type: "play", player: 1, cardId: "star-2" }, s2, seats)[0]!.text).toBe("E don stack! Pick 4!");
   });
 
+  it("calls stacked plays", () => {
+    const s0 = table([[card("circle", 7), card("star", 7), card("star", 3)], [card("cross", 3)], [card("square", 3)]], card("circle", 4));
+    const combo = { type: "play", player: 0, cardId: "circle-7", stack: ["star-7"], lastCard: true } as const;
+    expect(whotCallouts(s0, combo, play(s0, combo), seats).map((c) => c.text)).toEqual([LINES.combo(2), LINES.lastCard]);
+
+    const s1 = table([[card("circle", 8), card("star", 8), card("star", 3)], [card("cross", 3)], [card("square", 3)]], card("circle", 4));
+    const skip = { type: "play", player: 0, cardId: "circle-8", stack: ["star-8"] } as const;
+    expect(whotCallouts(s1, skip, play(s1, skip), seats)[0]!.text).toBe(LINES.suspension("Mama Put & Oga Tunde"));
+
+    const s2 = table([[card("circle", 14), card("cross", 14), card("star", 3)], [card("cross", 3)], [card("square", 3)]], card("circle", 4));
+    const market = { type: "play", player: 0, cardId: "circle-14", stack: ["cross-14"] } as const;
+    expect(whotCallouts(s2, market, play(s2, market), seats)[0]!.text).toBe(LINES.generalMarketStack(2));
+  });
+
   it("calls the Whot shape and Last card", () => {
     const s0 = table([[card("whot", 20), card("cross", 7)], [card("star", 1)]], card("circle", 4));
     const move: whot.WhotMove = { type: "play", player: 0, cardId: "whot-20", callShape: "star", lastCard: true };

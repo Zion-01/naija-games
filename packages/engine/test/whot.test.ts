@@ -145,6 +145,83 @@ describe('special cards', () => {
   });
 });
 
+describe('stacking cards of the same number', () => {
+  it('plays several cards in one turn, and the last one ends up on top', () => {
+    let s = table({ hands: [['circle-7', 'star-7', 'cross-7', 'star-3'], ['square-3']], top: 'circle-4' });
+    s = play(s, { type: 'play', player: 0, cardId: 'circle-7', stack: ['cross-7', 'star-7'], lastCard: true });
+    expect(s.hands[0]!.map((card) => card.id)).toEqual(['star-3']);
+    expect(s.pile.map((card) => card.id)).toEqual(['circle-4', 'circle-7', 'cross-7', 'star-7']);
+    expect(s.vulnerable).toBeNull();
+    expect(s.current).toBe(1);
+  });
+
+  it('only the lead card has to match the pile', () => {
+    const s = table({ hands: [['star-7', 'circle-7', 'star-3'], ['square-3']], top: 'circle-4' });
+    expect(applyMove(s, { type: 'play', player: 0, cardId: 'star-7', stack: ['circle-7'] }).ok).toBe(false);
+    expect(applyMove(s, { type: 'play', player: 0, cardId: 'circle-7', stack: ['star-7'] }).ok).toBe(true);
+  });
+
+  it('rejects mixed numbers, repeats and cards you do not hold', () => {
+    const s = table({ hands: [['circle-7', 'circle-3', 'star-7'], ['square-3']], top: 'circle-4' });
+    for (const stack of [['circle-3'], ['circle-7'], ['cross-7']]) {
+      expect(applyMove(s, { type: 'play', player: 0, cardId: 'circle-7', stack }).ok).toBe(false);
+    }
+  });
+
+  it('Pick Twos add up, and you can defend with a stack', () => {
+    let s = table({ hands: [['circle-2', 'star-2', 'star-4'], ['triangle-2', 'cross-2', 'cross-7']], top: 'circle-7' });
+    s = play(s, { type: 'play', player: 0, cardId: 'circle-2', stack: ['star-2'] });
+    expect(s.pending).toEqual({ number: 2, amount: 4 });
+    s = play(s, { type: 'play', player: 1, cardId: 'triangle-2', stack: ['cross-2'], lastCard: true });
+    expect(s.pending).toEqual({ number: 2, amount: 8 });
+    expect(s.current).toBe(0);
+  });
+
+  it('General Market stacked makes everyone else pick one per card', () => {
+    let s = table({ hands: [['circle-14', 'cross-14', 'star-3'], ['cross-3'], ['square-3']], top: 'circle-7' });
+    s = play(s, { type: 'play', player: 0, cardId: 'circle-14', stack: ['cross-14'], lastCard: true });
+    expect(s.hands.map((h) => h.length)).toEqual([1, 3, 3]);
+    expect(s.current).toBe(0);
+  });
+
+  it('each Suspension skips one more player, but never past you', () => {
+    const hands = [['circle-8', 'triangle-8', 'star-3', 'star-4'], ['cross-3'], ['square-3'], ['star-5']];
+    let s = play(table({ hands, top: 'circle-7' }), { type: 'play', player: 0, cardId: 'circle-8', stack: ['triangle-8'] });
+    expect(s.current).toBe(3);
+    s = play(table({ hands: hands.slice(0, 2), top: 'circle-7' }), { type: 'play', player: 0, cardId: 'circle-8', stack: ['triangle-8'] });
+    expect(s.current).toBe(0);
+  });
+
+  it('a stack of Whots takes one shape call', () => {
+    let s = table({ hands: [['whot-20-1', 'whot-20-2', 'star-3', 'star-4'], ['square-3']], top: 'circle-7' });
+    expect(applyMove(s, { type: 'play', player: 0, cardId: 'whot-20-1', stack: ['whot-20-2'] }).ok).toBe(false);
+    s = play(s, { type: 'play', player: 0, cardId: 'whot-20-1', stack: ['whot-20-2'], callShape: 'star' });
+    expect(s.calledShape).toBe('star');
+    expect(s.hands[0]).toHaveLength(2);
+  });
+
+  it('stacking your whole hand is check up', () => {
+    let s = table({ hands: [['circle-7', 'star-7'], ['square-3']], top: 'circle-4' });
+    s = play(s, { type: 'play', player: 0, cardId: 'circle-7', stack: ['star-7'] });
+    expect(s.over).toBe(true);
+    expect(s.winners).toEqual([0]);
+  });
+
+  it('legalMoves offers every stack and choice of top card, and each one is accepted', () => {
+    const s = table({ hands: [['circle-7', 'star-7', 'cross-7', 'circle-3'], ['square-3']], top: 'circle-4' });
+    const plays = legalMoves(s, 0).filter((m) => m.type === 'play');
+    const keys = plays.map((m) => m.type === 'play' && [m.cardId, ...(m.stack ?? [])].join(' '));
+    expect(keys).toContain('circle-7');
+    expect(keys).toContain('circle-7 star-7 cross-7');
+    expect(keys).toContain('circle-7 cross-7 star-7');
+    expect(keys).not.toContain('star-7');
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const move of plays) expect(applyMove(s, move).ok).toBe(true);
+    const full = plays.find((m) => m.type === 'play' && m.stack?.length === 2);
+    expect(full?.type === 'play' && full.lastCard).toBe(true);
+  });
+});
+
 describe('last card', () => {
   it('can be caught for 2 if you forget to call it', () => {
     let s = table({ hands: [['circle-3', 'star-3'], ['cross-3', 'cross-7']], top: 'circle-7' });

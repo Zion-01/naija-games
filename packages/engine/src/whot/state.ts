@@ -29,7 +29,17 @@ export type WhotState = {
 };
 
 export type WhotMove =
-  | { type: 'play'; player: number; cardId: string; callShape?: CallableShape; lastCard?: boolean }
+  | {
+      type: 'play';
+      player: number;
+      /** The lead card: it must match the top of the pile (or answer a pending Pick). */
+      cardId: string;
+      /** More cards of the same number, played in order on top of the lead in the same turn. The last one ends up on top. */
+      stack?: readonly string[];
+      /** Needed when the cards are Whots: one call for the whole stack. */
+      callShape?: CallableShape;
+      lastCard?: boolean;
+    }
   | { type: 'draw'; player: number }
   | { type: 'catch'; player: number; target: number };
 
