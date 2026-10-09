@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { GameRecord } from "@/components/Lobby";
@@ -303,6 +304,9 @@ function OnlineGames({ user }: { user: User }) {
         <RatingRow game="whot" rating={ratings.whot} />
         <RatingRow game="ayo" rating={ratings.ayo} />
         <p className="text-xs text-muted">Everybody start from 1200. Only games against other people move your rating, not the computer.</p>
+        <Link href="/leaderboard" className="text-sm font-bold text-accent underline">
+          See the leaderboard 🏆
+        </Link>
       </Card>
       <Card title="Recent online games">
         {games.length === 0 ? (

@@ -52,6 +52,9 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-1">
             <SettingsToggles />
+            <Link href="/leaderboard" aria-label="Leaderboard" className="grid size-9 place-items-center rounded-full text-xl hover:bg-surface">
+              🏆
+            </Link>
             <Link href="/profile" aria-label="Your profile" className="grid size-9 place-items-center rounded-full text-xl hover:bg-surface">
               👤
             </Link>

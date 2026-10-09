@@ -65,7 +65,7 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 
 > Status: Phases 0–3 are done. Gaps left in Phase 3 (deploy, tests not in CI, and others) are listed in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
-**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match (done), **4d** weekly leaderboards.
+**Phase 4: Accounts and competition (4–5 days).** Delivered in four PRs: **4a** accounts and saved results (done), **4b** Elo ratings (done), **4c** quick-match (done), **4d** weekly leaderboards (done).
 - Upgrade a guest to Google or phone OTP and keep their history. Profiles with an Elo rating per game.
 - Quick-match queue (matched by rating), and weekly leaderboards ("Oga of the Week").
 - How 4c (quick-match) works:
@@ -73,6 +73,11 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
   - Two players match when their gap fits inside both their windows (±100, plus 25 per second waited), so newcomers aren't thrown at someone far away but nobody waits long. The client offers "Play the computer" after 20s (`QUICK_OFFER_SECONDS`); after 60s (`QUICK_MAX_WAIT_SECONDS`) the server seats them against the computer.
   - Quick-match is 2-player for both games (Whot included, so matches come fast). The server opens a normal private room with seats held for the two players (`Match` option `reserved`): nobody hosts, anyone else with the code only watches, and a no-show's seat goes to the computer after 10s. Results and ratings save like any other room.
   - The queue is in memory (KI-5), so it only pairs players on one server process.
+- How 4d (leaderboards) works:
+  - Weekly points are the Elo a player gained in rated games that ended that week, so only games against other players with accounts count, and everyone starts each Monday on 0. Weeks run Monday 00:00 to Monday 00:00 Lagos time (UTC+1 all year).
+  - `weekly_leaderboard(game, weeks_ago, max_rows)` is a `security definer` SQL function, because `match_players` is only readable by the people at that table. It returns rank, nickname and the week's totals, never who played whom, plus the caller's own row even outside the top. Anyone may call it (the advisors warn about this; it's intentional). Ties on points go to more wins, then share the rank.
+  - "Oga of the Week" is last week's number one (`weeks_ago = 1`). It's computed when asked, so there's no cron job or stored winner.
+  - The all-time board reads `ratings` (public) with `profiles(nickname)`, players with at least one rated game.
 - Supabase tables: `profiles`, `matches`, `match_players`, `ratings`, with row-level security. The server writes results using the service key.
 
 **Phase 5: Polish and launch (ongoing).** Emotes and banter stickers in matches, cosmetic card backs and ayo boards (ads or monetisation later, no gambling mechanics), privacy-friendly analytics, and load testing a single Colyseus node.
