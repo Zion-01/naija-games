@@ -5,6 +5,8 @@ import {
   cleanNickname,
   type AyoWireMove,
   type CreateOptions,
+  type EmoteId,
+  type EmoteMessage,
   type ErrorMessage,
   type GameId,
   type JoinOptions,
@@ -87,6 +89,7 @@ export class Connection {
   private state: ConnectionState = { status: "connecting" };
   private readonly listeners = new Set<() => void>();
   private readonly errorListeners = new Set<(text: string) => void>();
+  private readonly emoteListeners = new Set<(emote: EmoteMessage) => void>();
   private room: Room | null = null;
   private users = 0;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -106,12 +109,18 @@ export class Connection {
     return () => this.errorListeners.delete(listener);
   }
 
+  onEmote(listener: (emote: EmoteMessage) => void) {
+    this.emoteListeners.add(listener);
+    return () => this.emoteListeners.delete(listener);
+  }
+
   attach(room: Room) {
     this.room = room;
     room.reconnection.minUptime = 1000;
     this.set({ status: "open", snapshot: null, reconnecting: false });
     room.onMessage(MSG.snapshot, (snapshot: Snapshot) => this.set({ status: "open", snapshot, reconnecting: false }));
     room.onMessage(MSG.error, (e: ErrorMessage) => this.errorListeners.forEach((l) => l(e.text)));
+    room.onMessage(MSG.emote, (e: EmoteMessage) => this.emoteListeners.forEach((l) => l(e)));
     room.onDrop(() => this.patchOpen({ reconnecting: true }));
     room.onReconnect(() => this.patchOpen({ reconnecting: false }));
     room.onLeave(() => {
@@ -128,6 +137,7 @@ export class Connection {
   }
 
   send(type: typeof MSG.move, move: WhotWireMove | AyoWireMove): void;
+  send(type: typeof MSG.emote, id: EmoteId): void;
   send(type: typeof MSG.start | typeof MSG.rematch | typeof MSG.ping): void;
   send(type: string, payload?: unknown) {
     this.room?.send(type, payload);

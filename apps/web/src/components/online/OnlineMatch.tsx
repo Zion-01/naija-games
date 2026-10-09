@@ -6,6 +6,7 @@ import { inviteLine, normalizeCode, type Snapshot } from "@naija/online";
 import { GameHeader, PrimaryButton, Toasts, useCallouts } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
 import { connect, ensureGuest, guest, inviteUrl, registry, wakeServer, whatsappLink, type Connection, type ConnectionState } from "@/lib/online";
+import { Emotes } from "./Emotes";
 import { NicknameField, useNickname } from "./Nickname";
 import { OnlineAyo } from "./OnlineAyo";
 import { OnlineWhot } from "./OnlineWhot";
@@ -89,7 +90,7 @@ function Room({ code }: { code: string }) {
   const snap = state.snapshot;
   const title = snap.game === "whot" ? "Whot · online" : "Ayo · online";
   return (
-    <Frame title={title}>
+    <Frame title={title} actions={snap.status !== "waiting" && <Emotes snap={snap} conn={conn} />}>
       <Toasts toasts={toasts} />
       {state.reconnecting && (
         <p className="bg-ochre px-4 py-1.5 text-center text-sm font-bold text-black" role="status">
@@ -202,10 +203,10 @@ function WaitingRoom({ snap, conn }: { snap: Snapshot; conn: Connection }) {
   );
 }
 
-function Frame({ title, children }: { title: string; children: React.ReactNode }) {
+function Frame({ title, actions, children }: { title: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="ankara flex min-h-dvh flex-col">
-      <GameHeader title={title} />
+      <GameHeader title={title} actions={actions} />
       {children}
     </div>
   );

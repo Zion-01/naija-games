@@ -40,6 +40,12 @@ test("two players share a private Whot room by invite link", async ({ browser })
   await expect(guest.getByText("6 cards")).toBeVisible();
   await expect(guest.getByText("Your turn")).toBeVisible();
 
+  // Banter: the guest's emote pops up on the host's table.
+  await guest.getByRole("button", { name: "Emotes" }).click();
+  await guest.getByRole("button", { name: "Na fire!" }).click();
+  await expect(host.getByText("Na fire!")).toBeVisible();
+  await expect(guest.getByText("Na fire!")).toBeVisible();
+
   // The guest's phone drops: the host sees them offline, and they get their seat back from the same link.
   await guest.close();
   await expect(host.getByTitle("Offline")).toBeVisible({ timeout: 10_000 });

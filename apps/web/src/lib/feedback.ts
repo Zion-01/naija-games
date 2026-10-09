@@ -1,6 +1,6 @@
 import { settings } from "./settings";
 
-export type Sfx = "tap" | "play" | "draw" | "special" | "win" | "lose" | "sow" | "capture" | "error";
+export type Sfx = "tap" | "play" | "draw" | "special" | "win" | "lose" | "sow" | "capture" | "error" | "emote";
 
 /** Short synthesised blips, so we ship no audio files. [frequency Hz, duration s] steps. */
 const TONES: Record<Sfx, [number, number][]> = {
@@ -13,6 +13,7 @@ const TONES: Record<Sfx, [number, number][]> = {
   sow: [[880, 0.025]],
   capture: [[660, 0.06], [990, 0.09]],
   error: [[180, 0.12]],
+  emote: [[740, 0.05], [988, 0.07]],
 };
 
 const PATTERNS: Partial<Record<Sfx, number | number[]>> = {

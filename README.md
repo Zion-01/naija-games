@@ -38,6 +38,7 @@ Or tap **Find me opponent**: the server pairs you with someone near your rating 
 - **Drops**: the SDK reconnects by itself. After 60s away, the computer (Medium) takes the seat. Opening the link again while signed in to the same account gives you your seat back.
 - **Spectators**: anyone who opens a full or running room watches without a hand.
 - **Rematch**: once every human in the room asks, the next game deals with the next player starting.
+- **Emotes**: seated players tap 😜 in the header to throw a banter sticker ("Na fire!", "You don fall!", "Good game"…) at the table. It's a fixed list (`EMOTES` in `packages/online`), so there's nothing to moderate; one per 3s, spectators see them but can't send, and anyone can hide other players' emotes from the tray.
 - Moves are rate-limited (10 per 2s per client, and Colyseus disconnects anything over 30 messages/s).
 
 | Variable | Where | Default |
