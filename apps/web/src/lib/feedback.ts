@@ -27,6 +27,13 @@ const PATTERNS: Partial<Record<Sfx, number | number[]>> = {
 
 let audio: AudioContext | null = null;
 
+/** The one AudioContext for sound effects and music (null without Web Audio). */
+export function audioContext(): AudioContext | null {
+  if (typeof window === "undefined" || typeof AudioContext === "undefined") return null;
+  audio ??= new AudioContext();
+  return audio;
+}
+
 export function sfx(kind: Sfx) {
   const { sound, haptics } = settings.get();
   if (haptics && PATTERNS[kind] !== undefined && typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -34,7 +41,8 @@ export function sfx(kind: Sfx) {
   }
   if (!sound || typeof window === "undefined") return;
   try {
-    audio ??= new AudioContext();
+    const audio = audioContext();
+    if (!audio) return;
     if (audio.state === "suspended") void audio.resume();
     let t = audio.currentTime;
     for (const [freq, dur] of TONES[kind]) {

@@ -74,7 +74,10 @@ export function SettingsToggles() {
   const s = settings.use();
   return (
     <div className="flex items-center gap-1">
-      <ToggleButton on={s.sound} label="Sound" onClick={() => settings.set({ sound: !s.sound })}>
+      <ToggleButton on={s.music} label="Music" onClick={() => settings.set({ music: !s.music })}>
+        🎵
+      </ToggleButton>
+      <ToggleButton on={s.sound} label="Sound effects" onClick={() => settings.set({ sound: !s.sound })}>
         {s.sound ? "🔊" : "🔇"}
       </ToggleButton>
       <ToggleButton on={s.haptics} label="Vibration" onClick={() => settings.set({ haptics: !s.haptics })}>
