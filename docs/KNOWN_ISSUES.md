@@ -1,6 +1,6 @@
 # Known issues and loose ends
 
-What still needs attention after Phase 3 (online multiplayer) and Phase 4a–4c (accounts, ratings, quick-match). Each item has an id (`KI-n`), so code comments, commits and PRs can point to it. When you fix one, delete it here and remove its `KI-n` comment from the code.
+What still needs attention after Phase 3 (online multiplayer) and Phase 4 (accounts, ratings, quick-match, leaderboards). Each item has an id (`KI-n`), so code comments, commits and PRs can point to it. When you fix one, delete it here and remove its `KI-n` comment from the code.
 
 Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 minor or cosmetic.
 
@@ -35,6 +35,7 @@ Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 m
 | KI-16 | 🟡 | **An abandoned room keeps playing.** If every human leaves mid-game but a spectator stays, the computer keeps playing both sides until the spectator leaves. | `Match.leave` | End the game (or close the room) when no humans are left in seats. |
 | KI-18 | 🟡 | **The invite page can be slow to load when the game server is slow.** The link preview data is fetched on every request, with a 2.5s timeout. If the game server is down, the preview falls back to generic text. | `apps/web/src/lib/rooms.ts` | Fine for now. Lower the timeout or cache it briefly if it shows up in metrics. |
 | KI-24 | 🟡 | **Signing in to an existing account drops the guest's games.** A guest who taps "Sign in" (instead of "Save") switches to the other account; games played as that guest stay with the abandoned anonymous user. The profile page warns about this. | `apps/web/src/components/Profile.tsx` | Merge the anonymous user's `match_players` rows into the signed-in account (a server-side function), if players ask. |
+| KI-27 | 🟡 | **One lucky game can make you Oga of the Week.** The weekly board has no minimum number of games, so while few people play rated games, a single win (+20) can top it. | `weekly_leaderboard` in `supabase/migrations/20261009140000_leaderboards.sql` | Once there are enough players, require a few rated games (say 5) to appear on the weekly board, or to be crowned. |
 
 ## Testing gaps
 
@@ -43,7 +44,7 @@ Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 m
 | KI-19 | 🟠 | **The Playwright tests don't run in CI.** `pnpm e2e` only runs locally; CI has no browser installed. | `.github/workflows/ci.yml` | Add a job that runs `pnpm --filter web exec playwright install --with-deps chromium` then `pnpm e2e`. |
 | KI-20 | 🟡 | **Pick Two stacking isn't tested end to end.** The plan's browser test asks for it, but the deal is random, so the test can't set it up. The engine and server tests do cover stacking. | `apps/web/e2e/online.spec.ts` | Add a server option, for tests only, to deal from a fixed seed. |
 | KI-21 | 🟡 | **Error messages are matched as text.** Join failures are recognised by regex on the Colyseus SDK's error text. A wording change in the SDK would show raw errors to players. | `joinError` in `apps/web/src/lib/online.ts` | Match on `e.code` (Colyseus `ErrorCode`) instead. |
-| KI-26 | 🟡 | **The rating SQL tests don't run in CI.** `supabase/tests/ratings.test.sql` checks `record_match`'s Elo maths, but it needs a Postgres with the Supabase schema, so it was only run by hand against the project. | `supabase/tests/`, `.github/workflows/ci.yml` | Add a CI job with the Supabase CLI (`supabase start`, `supabase db reset`, then `psql -f` each test), or run it before merging any migration that touches `record_match`. |
+| KI-26 | 🟡 | **The SQL tests don't run in CI.** `supabase/tests/ratings.test.sql` checks `record_match`'s Elo maths and `leaderboard.test.sql` checks the weekly boards, but it needs a Postgres with the Supabase schema, so it was only run by hand against the project. | `supabase/tests/`, `.github/workflows/ci.yml` | Add a CI job with the Supabase CLI (`supabase start`, `supabase db reset`, then `psql -f` each test), or run it before merging any migration that touches `record_match`. |
 
 ## Housekeeping
 
