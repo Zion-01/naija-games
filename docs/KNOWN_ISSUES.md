@@ -1,23 +1,22 @@
 # Known issues and loose ends
 
-What still needs attention after Phase 3 (online multiplayer) and Phase 4 (accounts, ratings, quick-match, leaderboards). Each item has an id (`KI-n`), so code comments, commits and PRs can point to it. When you fix one, delete it here and remove its `KI-n` comment from the code.
+What still needs attention after Phase 3 (online multiplayer) and Phase 4 (accounts, ratings, quick-match, leaderboards), now that the site is live. Each item has an id (`KI-n`), so code comments, commits and PRs can point to it. When you fix one, delete it here and remove its `KI-n` comment from the code.
 
-Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 minor or cosmetic.
-
-## Before launch
-
-| ID | Sev | Issue | Where | Suggested fix |
-|---|---|---|---|---|
-| KI-22 | 🔴 | **CAPTCHA isn't switched on, and the production URLs aren't in Supabase yet.** The app supports Cloudflare Turnstile on guest sign-in (`src/lib/captcha.ts`), but only once `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set. Supabase's CAPTCHA must be turned on *after* that is live, or guest sign-in breaks. Google sign-in redirects back to `/profile`, which Supabase only allows for `localhost:3000` so far. Phone sign-in is not planned (removed from the app). | Cloudflare dashboard → Turnstile; Supabase dashboard → Authentication | Follow "Deploying" steps 3 and 4 in the README: create the Turnstile widget, set the site key on Vercel and redeploy, then enable CAPTCHA (Turnstile, secret key) under Attack Protection. Add `https://<site>/profile` to Redirect URLs and set the Site URL. |
-| KI-4 | 🔴 | **Not yet tried on a real phone via WhatsApp** (plan's Verification section). WhatsApp's link preview and its in-app browser are untested. | — | Manual check on a real Android phone at https://naija-games.vercel.app (README "Deploying" step 5). |
-| KI-5 | 🟠 | **Rooms live in one process's memory.** A server restart or deploy ends every game in progress. You can't run two server instances: `/rooms/:code` and the `matches` map only know about local rooms, and the quick-match queue only pairs players on the same process. | `apps/server/src/rooms.ts` (`matches`, `queue`), `apps/server/src/queue.ts` | Deploy outside play hours, or add Colyseus Redis presence/driver and look up summaries through `matchMaker.query` before scaling past one node (Phase 5 load test). The queue would need to move to Redis (or one dedicated matchmaker node) too. |
+Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 minor or cosmetic. The site is live, and nothing is 🔴 at the moment.
 
 ## Security and abuse
 
 | ID | Sev | Issue | Where | Suggested fix |
 |---|---|---|---|---|
+| KI-22 | 🟠 | **There's no CAPTCHA on guest sign-in (deferred).** Anyone can script anonymous sign-ups. The app already supports Cloudflare Turnstile (`src/lib/captcha.ts`), but only once `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set. Supabase's CAPTCHA must be turned on *after* that is live, or guest sign-in breaks. Phone sign-in is not planned. | Cloudflare dashboard → Turnstile; Vercel env; Supabase → Authentication → Attack Protection | README "Deploying" step 4: create the widget for the site's domain, set the site key on Vercel and redeploy, then enable CAPTCHA in Supabase with the secret key. Do it once the domain is settled, since the widget is tied to it. |
 | KI-6 | 🟠 | **Room codes can be guessed.** There are 24⁴ ≈ 330k codes, and nothing limits how fast someone tries them. A stranger who guesses a live code can take an open seat or watch. Rooms are private only because codes are hard to guess. | `packages/online` (`CODE_LENGTH`), `apps/server/src/app.ts` | Rate-limit joins and `GET /rooms/:code` per IP. Optionally add a 5th letter, or a host setting to lock the room once it's full. |
 | KI-8 | 🟡 | **Two tabs on one device fight over the seat.** Opening the same room in a second tab silently moves the seat there. The first tab is left with `you = -1`, but isn't counted as a spectator. | `Match.join` | Tell the old session ("You opened this game somewhere else") and kick it. |
+
+## Scaling
+
+| ID | Sev | Issue | Where | Suggested fix |
+|---|---|---|---|---|
+| KI-5 | 🟠 | **Rooms live in one process's memory.** A server restart or deploy ends every game in progress. You can't run two server instances: `/rooms/:code` and the `matches` map only know about local rooms, and the quick-match queue only pairs players on the same process. | `apps/server/src/rooms.ts` (`matches`, `queue`), `apps/server/src/queue.ts` | Deploy outside play hours (a Render deploy or free-plan sleep also ends rooms, but sleep only happens when nobody is playing), or add Colyseus Redis presence/driver and look up summaries through `matchMaker.query` before scaling past one node (Phase 5 load test). The queue would need to move to Redis (or one dedicated matchmaker node) too. |
 
 ## Gameplay and UX
 
