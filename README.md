@@ -43,6 +43,10 @@ Two kinds of numbers, neither of them about a person:
 select day, metric, game, value from daily_counts where day > current_date - 7 order by day desc, metric, game;
 ```
 
+## Load testing
+
+`pnpm --filter server load --rooms 250` plays bot rooms against a local server and reports latency, CPU and memory. Results and what they mean for Render's free plan are in `docs/LOAD_TEST.md`.
+
 ## Online play
 
 Pick **🌍 Online** in a game's setup, enter a nickname and tap **Invite your guy**. You land on `/play/ABCD` with a WhatsApp share button; the link preview says "Tunde don challenge you for Whot!". The host can start early and let the computer fill the open seats.

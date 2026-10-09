@@ -7,7 +7,8 @@
     "dev": "tsx watch --env-file-if-exists=.env.local src/index.ts",
     "start": "node --import tsx --env-file-if-exists=.env.local src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "load": "tsx load/run.ts"
   },
   "devDependencies": {
     "@colyseus/sdk": "^0.18.5",

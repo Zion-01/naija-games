@@ -31,7 +31,7 @@ export const services: { auth: Authenticator; results: ResultSink | null; rating
 };
 
 /** Clients in game rooms (players and spectators) and open game rooms, for the daily peaks. */
-const live = { clients: 0, rooms: 0 };
+export const live = { clients: 0, rooms: 0 };
 
 /**
  * Private rooms keyed by their invite code, so the HTTP API can describe a room for link previews.

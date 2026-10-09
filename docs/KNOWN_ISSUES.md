@@ -16,7 +16,7 @@ Severity: 🔴 must fix before a public launch · 🟠 should fix soon · 🟡 m
 
 | ID | Sev | Issue | Where | Suggested fix |
 |---|---|---|---|---|
-| KI-5 | 🟠 | **Rooms live in one process's memory.** A server restart or deploy ends every game in progress. You can't run two server instances: `/rooms/:code` and the `matches` map only know about local rooms, and the quick-match queue only pairs players on the same process. | `apps/server/src/rooms.ts` (`matches`, `queue`), `apps/server/src/queue.ts` | Deploy outside play hours (a Render deploy or free-plan sleep also ends rooms, but sleep only happens when nobody is playing), or add Colyseus Redis presence/driver and look up summaries through `matchMaker.query` before scaling past one node (Phase 5 load test). The queue would need to move to Redis (or one dedicated matchmaker node) too. |
+| KI-5 | 🟠 | **Rooms live in one process's memory.** A server restart or deploy ends every game in progress. You can't run two server instances: `/rooms/:code` and the `matches` map only know about local rooms, and the quick-match queue only pairs players on the same process. | `apps/server/src/rooms.ts` (`matches`, `queue`), `apps/server/src/queue.ts` | Deploy outside play hours (a Render deploy or free-plan sleep also ends rooms, but sleep only happens when nobody is playing), or add Colyseus Redis presence/driver and look up summaries through `matchMaker.query` before scaling past one node. The Phase 5d load test (`docs/LOAD_TEST.md`) puts that far off: one process held 1,000 rooms at ~6% of a laptop core; a bigger single instance comes first. The queue would need to move to Redis (or one dedicated matchmaker node) too. |
 
 ## Gameplay and UX
 
