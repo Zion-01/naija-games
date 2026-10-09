@@ -31,7 +31,10 @@ abstract class GameRoom extends Room {
       onOver: (record) => {
         const save = services.results;
         if (!save || !record.players.some((p) => p.userId)) return;
-        save(record).catch((e: unknown) => console.error(`[${this.roomId}] saving the result failed:`, e));
+        save(record).then(
+          (saved) => this.match.setRatings(record.round, saved.ratings),
+          (e: unknown) => console.error(`[${this.roomId}] saving the result failed:`, e),
+        );
       },
     });
     matches.set(this.roomId, this.match);

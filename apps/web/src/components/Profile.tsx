@@ -11,6 +11,8 @@ import {
   linkGoogle,
   linkedWith,
   normalizePhone,
+  PROVISIONAL_GAMES,
+  ratingsFor,
   recentGames,
   saveNickname,
   sendPhoneCode,
@@ -20,6 +22,7 @@ import {
   verifyPhoneCode,
   type GameResult,
   type PlayedGame,
+  type Rating,
 } from "@/lib/account";
 import { ensureGuest } from "@/lib/online";
 
@@ -231,14 +234,47 @@ const RESULT: Record<GameResult, { label: string; className: string }> = {
   drawn: { label: "D", className: "bg-ochre text-black" },
 };
 
+const GAME_NAMES = { whot: "Whot", ayo: "Ayo" } as const;
+
+function signed(d: number) {
+  return d > 0 ? `+${d}` : d < 0 ? `−${-d}` : "±0";
+}
+
+function RatingRow({ game, rating }: { game: "whot" | "ayo"; rating: Rating | undefined }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col">
+        <b>{GAME_NAMES[game]}</b>
+        {rating && (
+          <span className="text-xs text-muted">
+            {rating.wins}W · {rating.losses}L{rating.draws ? ` · ${rating.draws}D` : ""} online
+          </span>
+        )}
+      </div>
+      {rating ? (
+        <div className="flex flex-col items-end">
+          <span className="text-2xl font-black">{rating.rating}</span>
+          {rating.ratedGames < PROVISIONAL_GAMES && (
+            <span className="text-xs text-muted">
+              still settling ({rating.ratedGames}/{PROVISIONAL_GAMES})
+            </span>
+          )}
+        </div>
+      ) : (
+        <span className="text-sm text-muted">No rating yet</span>
+      )}
+    </div>
+  );
+}
+
 function OnlineGames({ user }: { user: User }) {
-  const [games, setGames] = useState<PlayedGame[] | null>(null);
+  const [data, setData] = useState<{ games: PlayedGame[]; ratings: Partial<Record<"whot" | "ayo", Rating>> } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
-    recentGames(user.id).then(
-      (g) => live && setGames(g),
+    Promise.all([recentGames(user.id), ratingsFor(user.id)]).then(
+      ([games, ratings]) => live && setData({ games, ratings }),
       (e: unknown) => live && setError(message(e)),
     );
     return () => {
@@ -246,20 +282,32 @@ function OnlineGames({ user }: { user: User }) {
     };
   }, [user.id]);
 
-  return (
-    <Card title="Online games">
-      {error ? (
+  if (error) {
+    return (
+      <Card title="Online">
         <p className="text-sm text-muted">{error}</p>
-      ) : !games ? (
+      </Card>
+    );
+  }
+  if (!data) {
+    return (
+      <Card title="Online">
         <p className="text-sm text-muted">Loading…</p>
-      ) : games.length === 0 ? (
-        <p className="text-sm text-muted">No online game yet. Invite your guy!</p>
-      ) : (
-        <>
-          <p className="text-sm text-muted">
-            Last {games.length}: <b className="text-palm">{games.filter((g) => g.result === "won").length}W</b> ·{" "}
-            <b>{games.filter((g) => g.result === "lost").length}L</b> · {games.filter((g) => g.result === "drawn").length}D
-          </p>
+      </Card>
+    );
+  }
+  const { games, ratings } = data;
+  return (
+    <>
+      <Card title="Ratings">
+        <RatingRow game="whot" rating={ratings.whot} />
+        <RatingRow game="ayo" rating={ratings.ayo} />
+        <p className="text-xs text-muted">Everybody start from 1200. Only games against other people move your rating, not the computer.</p>
+      </Card>
+      <Card title="Recent online games">
+        {games.length === 0 ? (
+          <p className="text-sm text-muted">No online game yet. Invite your guy!</p>
+        ) : (
           <ul className="flex flex-col divide-y divide-line">
             {games.map((g) => (
               <li key={g.id} className="flex items-center gap-3 py-2">
@@ -268,19 +316,24 @@ function OnlineGames({ user }: { user: User }) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="font-bold">
-                    {g.game === "whot" ? "Whot" : "Ayo"} vs {g.others.map((o) => (o.kind === "ai" ? `${o.name} 🤖` : o.name)).join(", ")}
+                    {GAME_NAMES[g.game]} vs {g.others.map((o) => (o.kind === "ai" ? `${o.name} 🤖` : o.name)).join(", ")}
                   </div>
                   <div className="text-xs text-muted">
                     {new Date(g.endedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
                     {g.abandoned && " · computer finish am for you"}
                   </div>
                 </div>
+                {g.rating && (
+                  <span className={`shrink-0 text-sm font-bold ${g.rating.after >= g.rating.before ? "text-palm" : "text-[var(--card-ink)]"}`}>
+                    {signed(g.rating.after - g.rating.before)}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
-        </>
-      )}
-    </Card>
+        )}
+      </Card>
+    </>
   );
 }
 
