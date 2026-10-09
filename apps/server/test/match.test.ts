@@ -96,6 +96,22 @@ describe('moves', () => {
   });
 });
 
+describe('emotes', () => {
+  it('lets seated players send known emotes, one per cooldown, and never spectators', () => {
+    const { match } = whotMatch(2);
+    join(match, 'a');
+    join(match, 'b');
+    join(match, 'watcher');
+    expect(match.emote('b', 'laugh')).toEqual({ seat: 1, id: 'laugh' });
+    expect(match.emote('b', 'fire')).toMatch(/No rush/);
+    expect(match.emote('a', 'fire')).toEqual({ seat: 0, id: 'fire' });
+    expect(match.emote('a', '<script>')).toMatch(/no dey/);
+    expect(match.emote('watcher', 'gg')).toMatch(/only players/);
+    vi.advanceTimersByTime(3000);
+    expect(match.emote('b', 'gg')).toEqual({ seat: 1, id: 'gg' });
+  });
+});
+
 describe('turn timer', () => {
   it('plays an Easy move for a human who runs out of time', () => {
     const { match } = whotMatch(2);

@@ -84,9 +84,13 @@ export function SettingsToggles() {
   );
 }
 
-export function GameHeader({ title, onMenu }: { title: string; onMenu?: () => void }) {
+/**
+ * `actions` sit just before the settings toggles. Online games put the emote button there, and the header then
+ * stays above modals, so players can still banter on the game-over screen.
+ */
+export function GameHeader({ title, onMenu, actions }: { title: string; onMenu?: () => void; actions?: ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 bg-background/90 backdrop-blur">
+    <header className={`sticky top-0 bg-background/90 backdrop-blur ${actions ? "z-[60]" : "z-30"}`}>
       <div className="mx-auto flex w-full max-w-xl items-center gap-2 px-3 py-2">
         <Link href="/" className="grid size-9 place-items-center rounded-full text-xl hover:bg-surface" aria-label="Back to lobby">
           ←
@@ -97,6 +101,7 @@ export function GameHeader({ title, onMenu }: { title: string; onMenu?: () => vo
             New game
           </button>
         )}
+        {actions}
         <SettingsToggles />
       </div>
       <div className="kente" />

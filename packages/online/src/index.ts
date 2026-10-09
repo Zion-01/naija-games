@@ -134,8 +134,9 @@ export type RoomSummary = {
 
 /**
  * Message types, by direction. Client → server: `move` (a wire move), `start` (host only, before the game:
- * fill the open seats with the computer and deal), `rematch`, `ping` (keepalive, ignored), and in the queue room
- * `solo` (stop waiting and play the computer). Server → client: `snapshot`, `error`, and in the queue room `matched`.
+ * fill the open seats with the computer and deal), `rematch`, `emote` (an `EmoteId`), `ping` (keepalive, ignored), and in
+ * the queue room `solo` (stop waiting and play the computer). Server → client: `snapshot`, `error`, `emote` (an
+ * `EmoteMessage`), and in the queue room `matched`.
  */
 export const MSG = {
   move: 'move',
@@ -146,8 +147,32 @@ export const MSG = {
   snapshot: 'snapshot',
   error: 'error',
   matched: 'matched',
+  emote: 'emote',
 } as const;
 export type ErrorMessage = { text: string };
+
+/**
+ * Banter stickers players can throw at the table. A fixed list, so there's nothing to moderate.
+ * Only seated players can send them, at most one per `EMOTE_COOLDOWN_MS`.
+ */
+export const EMOTES = [
+  { id: 'laugh', emoji: '😂', text: 'You don fall!' },
+  { id: 'fire', emoji: '🔥', text: 'Na fire!' },
+  { id: 'wahala', emoji: '😤', text: 'Wahala!' },
+  { id: 'hurry', emoji: '🐢', text: 'Oya play nau!' },
+  { id: 'shock', emoji: '😮', text: 'Ehn?!' },
+  { id: 'sorry', emoji: '🙏', text: 'Sorry o' },
+  { id: 'clap', emoji: '👏', text: 'Well done' },
+  { id: 'gg', emoji: '🤝', text: 'Good game' },
+] as const;
+export type EmoteId = (typeof EMOTES)[number]['id'];
+export const EMOTE_COOLDOWN_MS = 3000;
+/** Someone at the table sent an emote. */
+export type EmoteMessage = { seat: number; id: EmoteId };
+
+export function parseEmote(raw: unknown): EmoteId | null {
+  return EMOTES.find((e) => e.id === raw)?.id ?? null;
+}
 
 const isInt = (v: unknown, min: number, max: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;

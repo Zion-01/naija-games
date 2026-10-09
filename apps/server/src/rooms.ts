@@ -92,6 +92,11 @@ abstract class GameRoom extends Room {
       if (error) client.send(MSG.error, { text: error });
     });
     this.onMessage(MSG.rematch, (client) => this.match.requestRematch(client.sessionId));
+    this.onMessage(MSG.emote, (client, id: unknown) => {
+      const result = this.match.emote(client.sessionId, id);
+      if (typeof result === 'string') client.send(MSG.error, { text: result });
+      else this.broadcast(MSG.emote, result);
+    });
     // Keepalive (KEEPALIVE_MS): receiving it is the point, so a sleeping-when-idle host keeps this room up.
     this.onMessage(MSG.ping, () => {});
   }

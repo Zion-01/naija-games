@@ -1,8 +1,11 @@
 import { createRng, type Difficulty, type Rng } from '@naija/engine';
 import {
   MAX_SPECTATORS,
+  EMOTE_COOLDOWN_MS,
   TURN_SECONDS,
   cleanNickname,
+  parseEmote,
+  type EmoteMessage,
   type GameId,
   type JoinOptions,
   type RatingChange,
@@ -96,6 +99,7 @@ export class Match<S, M, V> {
   private readonly reactTimers = new Set<ReturnType<typeof setTimeout>>();
   private readonly asked = new Set<string>();
   private readonly recentMoves = new Map<string, number[]>();
+  private readonly lastEmote = new Map<number, number>();
   private readonly reserved: string[] | null;
   private fillTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -222,6 +226,18 @@ export class Match<S, M, V> {
     const move = this.rules.parseMove(raw, seat);
     if (!move) return 'That move no make sense';
     return this.play(move);
+  }
+
+  /** Checks an emote from a seated player. Returns the message to broadcast, or an error line for the sender. */
+  emote(sessionId: string, raw: unknown): EmoteMessage | string {
+    const seat = this.seatOf(sessionId);
+    if (seat < 0) return 'Na only players fit send emote';
+    const id = parseEmote(raw);
+    if (!id) return 'That emote no dey';
+    const now = this.now();
+    if (now - (this.lastEmote.get(seat) ?? -Infinity) < EMOTE_COOLDOWN_MS) return 'Easy! No rush am.';
+    this.lastEmote.set(seat, now);
+    return { seat, id };
   }
 
   /** The saved result's rating changes, shown on the game-over screen. Ignored if a rematch already started. */

@@ -89,6 +89,23 @@ describe('private Whot room over WebSockets', () => {
     await Promise.all([host.leave(), back.leave(), watcher.leave()]);
   });
 
+  it('broadcasts emotes to everyone in the room, spectators included', async () => {
+    const host = await new Client(URL).create('ayo', { nickname: 'Ada', guestId: 'guest-ada-emote' });
+    const h = watch(host);
+    const code = (await h.until((s) => s.status === 'waiting')).code;
+    const guest = await new Client(URL).joinById(code, { nickname: 'Emeka', guestId: 'guest-emeka-emote' });
+    const watcher = await new Client(URL).joinById(code, { nickname: 'Eye', guestId: 'guest-eye-emote', spectate: true });
+    const w = watch(watcher);
+    await w.until((s) => s.status === 'playing');
+    const seen = new Promise((resolve) => watcher.onMessage('emote', resolve));
+    guest.send('emote', 'fire');
+    expect(await seen).toEqual({ seat: 1, id: 'fire' });
+    watcher.send('emote', 'laugh');
+    await new Promise((r) => setTimeout(r, 200));
+    expect(w.box.errors).toEqual(['Na only players fit send emote']);
+    await Promise.all([host.leave(), guest.leave(), watcher.leave()]);
+  });
+
   it('accepts keepalive pings silently, so a waiting room stays up on a host that sleeps when idle', async () => {
     const host = await new Client(URL).create('ayo', { nickname: 'Ada', guestId: 'guest-ada-ping1' });
     const h = watch(host);
