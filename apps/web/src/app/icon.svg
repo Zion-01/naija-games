@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#8a1c2b"/>
+  <g opacity="0.18" fill="#e3a21a">
+    <circle cx="64" cy="64" r="28"/><circle cx="448" cy="448" r="28"/><circle cx="448" cy="64" r="16"/><circle cx="64" cy="448" r="16"/>
+  </g>
+  <g transform="rotate(-12 256 256)">
+    <rect x="146" y="96" width="220" height="320" rx="26" fill="#fffdf7"/>
+    <polygon fill="#8a1c2b" points="256,172 280,240 352,240 294,282 316,350 256,308 196,350 218,282 160,240 232,240"/>
+    <text x="172" y="150" font-family="Arial, sans-serif" font-weight="900" font-size="48" fill="#8a1c2b">7</text>
+  </g>
+  <g stroke="#3f2610" stroke-width="5">
+    <ellipse cx="346" cy="404" rx="30" ry="24" fill="#f0e2c2" transform="rotate(-20 346 404)"/>
+    <ellipse cx="404" cy="372" rx="30" ry="24" fill="#f0e2c2" transform="rotate(25 404 372)"/>
+    <ellipse cx="398" cy="430" rx="30" ry="24" fill="#f0e2c2" transform="rotate(60 398 430)"/>
+  </g>
+</svg>

@@ -1,26 +1,156 @@
 @import "tailwindcss";
 
+/* Ankara-inspired palette: indigo, ochre, palm green and a warm red on cream. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbf4e6;
+  --foreground: #1f160f;
+  --surface: #fffaf0;
+  --muted: #6b5b4b;
+  --line: rgb(31 22 15 / 0.14);
+  --accent: #d9480f;
+  --accent-ink: #ffffff;
+  --indigo: #24316b;
+  --ochre: #e3a21a;
+  --palm: #1f7a4d;
+  --card-face: #fffdf7;
+  --card-ink: #8a1c2b;
+  --card-back: #8a1c2b;
+  --felt: #1f6b47;
+  --felt-dark: #154d33;
+  --wood: #8b5a2b;
+  --wood-dark: #5e3a19;
+  --pit: #4a2c12;
+  --seed: #f0e2c2;
+  --pattern-opacity: 0.09;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #14100c;
+    --foreground: #f3e9d8;
+    --surface: #1f1914;
+    --muted: #b3a38f;
+    --line: rgb(243 233 216 / 0.14);
+    --accent: #f76707;
+    --card-face: #f6efe0;
+    --felt: #12402b;
+    --felt-dark: #0b2b1c;
+    --wood: #6b4420;
+    --wood-dark: #3f2610;
+    --pit: #2e1a09;
+    --pattern-opacity: 0.07;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-indigo: var(--indigo);
+  --color-ochre: var(--ochre);
+  --color-palm: var(--palm);
+  --color-felt: var(--felt);
+  --color-felt-dark: var(--felt-dark);
+  --color-wood: var(--wood);
+  --color-wood-dark: var(--wood-dark);
+  --color-pit: var(--pit);
+  --color-seed: var(--seed);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* A repeating wax-print motif (diamonds and dots) behind everything. */
+.ankara {
+  position: relative;
+  isolation: isolate;
+}
+.ankara::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: var(--pattern-opacity);
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, var(--ochre) 0 5px, transparent 6px),
+    radial-gradient(circle at 0 0, var(--accent) 0 9px, transparent 10px),
+    radial-gradient(circle at 100% 100%, var(--accent) 0 9px, transparent 10px),
+    linear-gradient(45deg, transparent 42%, var(--indigo) 42% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, var(--palm) 42% 58%, transparent 58%);
+  background-size: 44px 44px;
+}
+
+/* A thin kente-like stripe used under headers. */
+.kente {
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--ochre) 0 18px,
+    var(--palm) 18px 26px,
+    var(--accent) 26px 44px,
+    var(--indigo) 44px 52px
+  );
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.toast-in {
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) rotate(-8deg) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card-in {
+  animation: card-in 220ms ease-out;
+}
+
+@keyframes pulse-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(227 162 26 / 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(227 162 26 / 0);
+  }
+}
+.pulse-ring {
+  animation: pulse-ring 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in,
+  .card-in,
+  .pulse-ring {
+    animation: none;
+  }
 }
