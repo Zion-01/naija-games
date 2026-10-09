@@ -2,10 +2,11 @@
 
 Read `README.md` for the layout and `docs/PLAN.md` for the phased roadmap.
 
-## Status (2026-10-08)
+## Status (2026-10-09)
 - ✅ **Phase 0, scaffold**: pnpm monorepo, CI (`.github/workflows/ci.yml`: typecheck + test), Next.js app, Colyseus server that boots with no rooms.
 - ✅ **Phase 1, engines + AI**: `packages/engine`, 33 Vitest tests passing (rule scenarios, card and seed conservation, AI strength checks).
-- ⏭️ **Next: Phase 2, offline web game** (play vs AI + pass-and-play in `apps/web`). Then Phase 3 (Colyseus `WhotRoom` and `AyoRoom` running the engine, private invite links).
+- ✅ **Phase 2, offline web game**: `/whot` and `/ayo` in `apps/web` (vs AI at three levels + pass-and-play), pidgin toasts/voice, synthesised SFX, haptics, local win/loss stats, PWA manifest + offline service worker, ankara theme with dark mode. Web tests in `apps/web/test`.
+- ⏭️ **Next: Phase 3** (Colyseus `WhotRoom` and `AyoRoom` running the engine, private invite links).
 
 ## Decisions already made (don't revisit)
 - Web-first, Next.js. Online multiplayer comes in v1 (Phase 3), after the offline build.
@@ -20,3 +21,6 @@ Read `README.md` for the layout and `docs/PLAN.md` for the phased roadmap.
 - The web app consumes the engine as TS source (`transpilePackages: ["@naija/engine"]`). The web `typecheck` script runs `next typegen` first because `LayoutProps` is a generated type.
 - The engine's simulation tests take about 60s (hard Whot AI). `vitest.config.ts` sets a 60s test timeout.
 - Whot `legalMoves` can return `catch` moves for seats that aren't on turn. A server or game loop should offer every non-current seat a chance to catch after each move (see `simulate()` in `packages/engine/test/whot.test.ts`).
+- Web game loop: the engine is driven from client components (`components/whot/WhotGame.tsx`, `components/ayo/AyoGame.tsx`). Pure helpers (callouts, AI scheduling, sow animation frames) live in `src/lib/*-session.ts` and are unit-tested; Phase 3 can reuse the callouts for server-driven state.
+- Never call `Math.random()`/`Date.now()` during render (Cache Components turns that into a prerender error). Games are seeded with `Date.now()` in the click handler that starts them.
+- `public/sw.js` only registers in production builds (`components/ServiceWorker.tsx`). Bump its `CACHE` name when changing the precache list. Icons in `public/` are rendered from `public/icon.svg`.

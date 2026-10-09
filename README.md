@@ -8,7 +8,7 @@ The full roadmap is in [docs/PLAN.md](docs/PLAN.md).
 
 ```
 packages/engine/   Pure TypeScript rules + AI for both games (no I/O). Shared by the web app and the server.
-apps/web/          Next.js 16 (App Router, Tailwind 4). Lobby placeholder for now.
+apps/web/          Next.js 16 (App Router, Tailwind 4). Lobby, /whot and /ayo: play the computer or pass-and-play, offline PWA.
 apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport). No rooms yet.
 ```
 
@@ -17,7 +17,7 @@ apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport). No
 ```bash
 pnpm install
 pnpm dev          # web on :3000 + server on :2567
-pnpm test         # engine tests (~1 min; includes AI-vs-AI simulations)
+pnpm test         # engine tests (~1 min; includes AI-vs-AI simulations) + web unit tests
 pnpm typecheck
 ```
 
