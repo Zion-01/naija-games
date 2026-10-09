@@ -28,6 +28,7 @@ export function OnlineAyo({ snap, conn, push }: { snap: Snapshot<"ayo">; conn: C
     if (before?.view && isNextMove(before, snap)) start(before.view, snap.last!, snap.view!);
   }, [snap, start]);
 
+  // KI-11: no "moves without a chop" warning here yet (offline AyoGame has one).
   // While seeds are moving, show the board from before the move; the snapshot's board lands with the last seed.
   const shown = anim ? anim.prev : view;
   const myTurn = me !== null && !view.over && view.current === me && !anim;

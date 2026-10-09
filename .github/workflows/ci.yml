@@ -13,3 +13,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # KI-19: Playwright (`pnpm e2e`) isn't run here yet. See docs/KNOWN_ISSUES.md.

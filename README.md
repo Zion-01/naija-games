@@ -2,7 +2,7 @@
 
 Whot and Ayo in the browser: play the computer, or send your guy a WhatsApp link and play online.
 
-The full roadmap is in [docs/PLAN.md](docs/PLAN.md).
+The full roadmap is in [docs/PLAN.md](docs/PLAN.md). Open issues and loose ends (some must be fixed before launch) are in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 
 ## Layout
 

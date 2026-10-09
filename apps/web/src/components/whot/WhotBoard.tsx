@@ -43,6 +43,7 @@ export function WhotBoard({
   onCatch: (target: number) => void;
   onInvalid: (text: string) => void;
 }) {
+  // KI-9: online, this is cleared before the server confirms the move. KI-10: survives a seat change in pass-and-play.
   const [lastCardCalled, setLastCardCalled] = useState(false);
   const [choosingShape, setChoosingShape] = useState<whot.Card | null>(null);
 

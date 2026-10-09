@@ -1,13 +1,14 @@
 # Naija Games: notes for agents
 
-Read `README.md` for the layout and `docs/PLAN.md` for the phased roadmap.
+Read `README.md` for the layout, `docs/PLAN.md` for the phased roadmap, and `docs/KNOWN_ISSUES.md` for open problems. When you fix one, delete its `KI-n` entry and the matching `KI-n` comment in the code. When you find one, add it.
 
 ## Status (2026-10-09)
 - ✅ **Phase 0, scaffold**: pnpm monorepo, CI (`.github/workflows/ci.yml`: typecheck + test), Next.js app, Colyseus server that boots with no rooms.
 - ✅ **Phase 1, engines + AI**: `packages/engine`, 33 Vitest tests passing (rule scenarios, card and seed conservation, AI strength checks).
 - ✅ **Phase 2, offline web game**: `/whot` and `/ayo` in `apps/web` (vs AI at three levels + pass-and-play), pidgin toasts/voice, synthesised SFX, haptics, local win/loss stats, PWA manifest + offline service worker, ankara theme with dark mode. Web tests in `apps/web/test`.
 - ✅ **Phase 3, online multiplayer**: `packages/online` (protocol), `apps/server` (`Match` + `WhotRoom`/`AyoRoom`, `GET /rooms/:code`), `/play/[code]` with WhatsApp invite + dynamic OG image, turn timers with Easy-AI auto-play, 60s reconnect then AI takeover, guest-id seat reclaim, spectators, rematch, rate limits. Server tests (unit + real WebSocket), Playwright e2e (`pnpm e2e`).
-- ⚠️ Phase 3 identity is a device guest id + nickname, **not Supabase yet** (no project/keys). Swap it in via `onAuth` in `apps/server/src/rooms.ts` when Phase 4 adds accounts.
+- ⚠️ Phase 3 identity is a device guest id + nickname, **not Supabase yet** (no project/keys). Swap it in via `onAuth` in `apps/server/src/rooms.ts` when Phase 4 adds accounts (KI-1).
+- 🔴 Launch blockers: see the "Before launch" table in `docs/KNOWN_ISSUES.md` (sign-in, server deploy, production URL, real-phone check, single-process rooms).
 - ⏭️ **Next: Phase 4** (accounts, Elo, quick-match, leaderboards).
 
 ## Decisions already made (don't revisit)

@@ -17,7 +17,10 @@ export type Guest = { nickname: string; guestId: string };
 
 export const guest = createStore<Guest>("naija-games:guest", { nickname: "", guestId: "" });
 
-/** The device's guest identity, created on first use (in an event handler, never during render). */
+/**
+ * The device's guest identity, created on first use (in an event handler, never during render).
+ * KI-1: temporary until Supabase anonymous sign-in (docs/KNOWN_ISSUES.md).
+ */
 export function ensureGuest(nickname?: string): Guest {
   const current = guest.get();
   const next = {
@@ -32,6 +35,7 @@ export function ensureGuest(nickname?: string): Guest {
  * The game server. Set NEXT_PUBLIC_GAME_SERVER_URL in production; in development it is port 2567 on
  * whatever host served the page, so a phone on the same Wi-Fi can play too.
  */
+// KI-3: production must set NEXT_PUBLIC_GAME_SERVER_URL (TLS), or HTTPS pages hit mixed-content blocking.
 export function gameServerUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_SERVER_URL;
   if (configured) return configured.replace(/\/$/, "");
@@ -173,6 +177,7 @@ export function connect(code: string, opts: { spectate?: boolean } = {}): Connec
   return conn;
 }
 
+// KI-21: matches SDK error text; switch to Colyseus error codes.
 function joinError(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
   if (/not found|expired|no rooms/i.test(message)) return "This room no dey again. Ask your guy for a fresh link.";
