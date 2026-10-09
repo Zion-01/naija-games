@@ -40,12 +40,22 @@ export function ensureGuest(nickname?: string): Guest {
  * The game server. Set NEXT_PUBLIC_GAME_SERVER_URL in production; in development it is port 2567 on
  * whatever host served the page, so a phone on the same Wi-Fi can play too.
  */
-// KI-3: production must set NEXT_PUBLIC_GAME_SERVER_URL (TLS), or HTTPS pages hit mixed-content blocking.
+// Production sets NEXT_PUBLIC_GAME_SERVER_URL (TLS); without it, HTTPS pages would hit mixed-content blocking.
 export function gameServerUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_SERVER_URL;
   if (configured) return configured.replace(/\/$/, "");
   if (typeof window === "undefined") return "http://localhost:2567";
   return `${window.location.protocol}//${window.location.hostname}:2567`;
+}
+
+/**
+ * Leaves on purpose. Render's proxy doesn't pass on the server's "you left" close (code 4000): the socket dies about
+ * 20s later as a drop (1006), and the SDK would then retry the room 15 times. So switch retries off first.
+ */
+function leaveRoom(room: Room | null) {
+  if (!room) return;
+  room.reconnection.maxRetries = 0;
+  return room.leave(true);
 }
 
 let wokeAt = 0;
@@ -132,7 +142,7 @@ export class Connection {
       this.users--;
       if (this.users > 0) return;
       this.closeTimer = setTimeout(() => {
-        void this.room?.leave(true);
+        void leaveRoom(this.room);
         forget(this);
       }, 300);
     };
@@ -233,7 +243,7 @@ export class Search {
 
   cancel() {
     this.done = true;
-    void this.room?.leave(true);
+    void leaveRoom(this.room);
   }
 
   /** Like `Connection.retain`: the last user going away cancels the search, unless it comes straight back (Strict Mode). */
@@ -250,14 +260,14 @@ export class Search {
     try {
       const { client, options } = await signedIn();
       const room = await client.joinOrCreate("queue", { ...options, game: this.game } satisfies QueueOptions);
-      if (this.done) return void room.leave(true);
+      if (this.done) return void leaveRoom(room);
       this.room = room;
       room.onMessage(MSG.matched, ({ code }: MatchedMessage) => {
         this.done = true;
         // Join straight away; the page has 15s to pick the connection up (as with createRoom).
         const release = connect(code).retain();
         setTimeout(release, 15_000);
-        void room.leave(true);
+        void leaveRoom(room);
         this.set({ status: "matched", code });
       });
       room.onMessage(MSG.error, (e: ErrorMessage) => this.fail(e.text));
@@ -270,7 +280,7 @@ export class Search {
   private fail(error: string) {
     if (this.done) return;
     this.done = true;
-    void this.room?.leave(true);
+    void leaveRoom(this.room);
     this.set({ status: "failed", error });
   }
 
