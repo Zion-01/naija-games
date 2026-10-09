@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ayo, whot } from "@naija/engine";
-import { GameRecord, InstallButton } from "@/components/Lobby";
+import { GameRecord, InstallButton, JoinByCode } from "@/components/Lobby";
 import { SettingsToggles } from "@/components/ui";
 import { CardBack, WhotCard } from "@/components/whot/WhotCard";
 
@@ -71,8 +71,12 @@ export default function Home() {
             </li>
           ))}
         </ul>
+        <section className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-muted">Your guy send you code?</h2>
+          <JoinByCode />
+        </section>
         <p className="text-center text-sm text-muted">
-          Play the computer or pass the phone. Online matches with your guys are coming soon.
+          Play the computer, pass the phone, or pick 🌍 Online in a game to send your guy a WhatsApp link.
         </p>
         <InstallButton />
       </div>

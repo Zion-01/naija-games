@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@naija/engine"],
+  transpilePackages: ["@naija/engine", "@naija/online"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

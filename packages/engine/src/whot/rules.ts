@@ -53,9 +53,10 @@ export function initialState(opts: WhotOptions & { firstPlayer?: number }, seed:
   };
 }
 
-export const topCard = (s: WhotState) => s.pile[s.pile.length - 1]!;
+export const topCard = (s: Pick<WhotState, 'pile'>) => s.pile[s.pile.length - 1]!;
 
-export function canPlay(s: WhotState, card: Card): boolean {
+/** Works on a `WhotView` too, so clients can show which cards are playable. */
+export function canPlay(s: Pick<WhotState, 'pending' | 'pile' | 'calledShape'>, card: Card): boolean {
   if (s.pending) return card.number === s.pending.number;
   if (card.number === WHOT) return true;
   const top = topCard(s);
@@ -180,7 +181,7 @@ export function viewFor(s: WhotState, me: number): WhotView {
   };
 }
 
-export const nextSeat = (s: WhotState, from: number, steps: number) => (from + steps) % s.players;
+export const nextSeat = (s: Pick<WhotState, 'players'>, from: number, steps: number) => (from + steps) % s.players;
 
 export const handTotal = (hand: Card[]) => hand.reduce((sum, c) => sum + cardValue(c), 0);
 

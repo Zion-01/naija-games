@@ -8,15 +8,19 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test"
   },
   "dependencies": {
+    "@colyseus/sdk": "^0.18.5",
+    "@naija/engine": "workspace:*",
+    "@naija/online": "workspace:*",
     "next": "16.4.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "@naija/engine": "workspace:*"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^22",
     "@types/react": "^19",

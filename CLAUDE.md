@@ -6,7 +6,9 @@ Read `README.md` for the layout and `docs/PLAN.md` for the phased roadmap.
 - ✅ **Phase 0, scaffold**: pnpm monorepo, CI (`.github/workflows/ci.yml`: typecheck + test), Next.js app, Colyseus server that boots with no rooms.
 - ✅ **Phase 1, engines + AI**: `packages/engine`, 33 Vitest tests passing (rule scenarios, card and seed conservation, AI strength checks).
 - ✅ **Phase 2, offline web game**: `/whot` and `/ayo` in `apps/web` (vs AI at three levels + pass-and-play), pidgin toasts/voice, synthesised SFX, haptics, local win/loss stats, PWA manifest + offline service worker, ankara theme with dark mode. Web tests in `apps/web/test`.
-- ⏭️ **Next: Phase 3** (Colyseus `WhotRoom` and `AyoRoom` running the engine, private invite links).
+- ✅ **Phase 3, online multiplayer**: `packages/online` (protocol), `apps/server` (`Match` + `WhotRoom`/`AyoRoom`, `GET /rooms/:code`), `/play/[code]` with WhatsApp invite + dynamic OG image, turn timers with Easy-AI auto-play, 60s reconnect then AI takeover, guest-id seat reclaim, spectators, rematch, rate limits. Server tests (unit + real WebSocket), Playwright e2e (`pnpm e2e`).
+- ⚠️ Phase 3 identity is a device guest id + nickname, **not Supabase yet** (no project/keys). Swap it in via `onAuth` in `apps/server/src/rooms.ts` when Phase 4 adds accounts.
+- ⏭️ **Next: Phase 4** (accounts, Elo, quick-match, leaderboards).
 
 ## Decisions already made (don't revisit)
 - Web-first, Next.js. Online multiplayer comes in v1 (Phase 3), after the offline build.
@@ -23,4 +25,8 @@ Read `README.md` for the layout and `docs/PLAN.md` for the phased roadmap.
 - Whot `legalMoves` can return `catch` moves for seats that aren't on turn. A server or game loop should offer every non-current seat a chance to catch after each move (see `simulate()` in `packages/engine/test/whot.test.ts`).
 - Web game loop: the engine is driven from client components (`components/whot/WhotGame.tsx`, `components/ayo/AyoGame.tsx`). Pure helpers (callouts, AI scheduling, sow animation frames) live in `src/lib/*-session.ts` and are unit-tested; Phase 3 can reuse the callouts for server-driven state.
 - Never call `Math.random()`/`Date.now()` during render (Cache Components turns that into a prerender error). Games are seeded with `Date.now()` in the click handler that starts them.
-- `public/sw.js` only registers in production builds (`components/ServiceWorker.tsx`). Bump its `CACHE` name when changing the precache list. Icons in `public/` are rendered from `public/icon.svg`.
+- Online: game logic lives in `apps/server/src/match.ts` (no Colyseus imports, unit-tested with fake timers); `rooms.ts` is a thin wrapper. The room id **is** the invite code (set in `onCreate`), and rooms are private so `joinOrCreate` never hands them out.
+- Online web: `src/lib/online.ts` keeps connections outside React (survives navigation from /whot to /play/CODE and Strict Mode remounts). Boards are presentational (`WhotBoard`, `AyoBoard`) and shared by offline and online play.
+- The Colyseus SDK only auto-reconnects rooms up for `reconnection.minUptime` (default 5s); the web client lowers it to 1s.
+- `/play/[code]` metadata fetches the live room, so the page calls `connection()` inside its Suspense boundary (Cache Components otherwise errors on uncached data in `generateMetadata`).
+- `public/sw.js` only registers in production builds (`components/ServiceWorker.tsx`). Bump its `CACHE` name when changing the precache list. It skips `/play/*` (online needs the network). Icons in `public/` are rendered from `public/icon.svg`.

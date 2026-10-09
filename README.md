@@ -8,8 +8,10 @@ The full roadmap is in [docs/PLAN.md](docs/PLAN.md).
 
 ```
 packages/engine/   Pure TypeScript rules + AI for both games (no I/O). Shared by the web app and the server.
-apps/web/          Next.js 16 (App Router, Tailwind 4). Lobby, /whot and /ayo: play the computer or pass-and-play, offline PWA.
-apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport). No rooms yet.
+packages/online/   The client ↔ server protocol: snapshot and room types, move validation, room codes, timers.
+apps/web/          Next.js 16 (App Router, Tailwind 4). Lobby, /whot and /ayo (computer, pass-and-play or online),
+                   /play/CODE for private online rooms. Offline PWA.
+apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport): WhotRoom and AyoRoom run the engine.
 ```
 
 ## Commands
@@ -17,9 +19,31 @@ apps/server/       Colyseus 0.18 game server (@colyseus/core + ws transport). No
 ```bash
 pnpm install
 pnpm dev          # web on :3000 + server on :2567
-pnpm test         # engine tests (~1 min; includes AI-vs-AI simulations) + web unit tests
+pnpm test         # engine (~1 min; AI-vs-AI simulations), protocol, server (rooms over real WebSockets) and web unit tests
 pnpm typecheck
+pnpm e2e          # Playwright: two browsers share a private room (starts the server and web app itself)
 ```
+
+Playwright needs a Chromium: run `pnpm --filter web exec playwright install chromium` once, or point `PW_CHROMIUM` at an installed one.
+
+## Online play
+
+Pick **🌍 Online** in a game's setup, enter a nickname and tap **Invite your guy**. You land on `/play/ABCD` with a WhatsApp share button; the link preview says "Tunde don challenge you for Whot!". The host can start early and let the computer fill the open seats.
+
+- **The server is authoritative.** Clients send moves without a player number; the server stamps the sender's seat, checks the move with the engine, and sends each client a snapshot built from `viewFor` for their seat. Nobody receives another player's cards.
+- **Turn timer**: Whot 20s, Ayo 30s. When it runs out, the server plays an Easy-AI move for you.
+- **Drops**: the SDK reconnects by itself. After 60s away, the computer (Medium) takes the seat. Opening the link again on the same device gives you your seat back (each device keeps a random guest id).
+- **Spectators**: anyone who opens a full or running room watches without a hand.
+- **Rematch**: once every human in the room asks, the next game deals with the next player starting.
+- Moves are rate-limited (10 per 2s per client, and Colyseus disconnects anything over 30 messages/s).
+
+| Variable | Where | Default |
+|---|---|---|
+| `NEXT_PUBLIC_GAME_SERVER_URL` | web (browser) | `http(s)://<page host>:2567` |
+| `GAME_SERVER_URL` | web (server side, for link previews) | `NEXT_PUBLIC_GAME_SERVER_URL`, then `http://localhost:2567` |
+| `PORT` | server | `2567` |
+
+The server also serves `GET /rooms/:code` (public room facts for previews) and `GET /health`.
 
 ## Engine
 

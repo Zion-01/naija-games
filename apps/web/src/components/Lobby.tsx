@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CODE_LENGTH, normalizeCode } from "@naija/online";
 import { stats, type GameId } from "@/lib/stats";
 
 /** Your record against the computer, from this device. */
@@ -49,5 +51,35 @@ export function InstallButton() {
     >
       📲 Add to your home screen. E go work offline.
     </button>
+  );
+}
+
+/** "Got a code?": jumps to /play/CODE for an invite someone read out instead of sending. */
+export function JoinByCode() {
+  const router = useRouter();
+  const [code, setCode] = useState("");
+  const valid = normalizeCode(code);
+  return (
+    <form
+      className="flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid) router.push(`/play/${valid}`);
+      }}
+    >
+      <input
+        value={code}
+        onChange={(e) => setCode(e.target.value.toUpperCase())}
+        maxLength={CODE_LENGTH}
+        placeholder="Room code"
+        aria-label="Room code"
+        autoCapitalize="characters"
+        autoComplete="off"
+        className="min-w-0 flex-1 rounded-2xl bg-surface px-4 py-3 font-mono text-lg font-black tracking-[0.3em] shadow-inner outline-none ring-accent placeholder:font-sans placeholder:tracking-normal placeholder:font-semibold focus:ring-2"
+      />
+      <button type="submit" disabled={!valid} className="rounded-2xl bg-accent px-5 font-black text-accent-ink shadow transition disabled:opacity-40">
+        Join
+      </button>
+    </form>
   );
 }

@@ -4,12 +4,28 @@ import { LINES, type Callout } from "./voice";
 export type SeatKind = "human" | "ai";
 export type WhotSeat = { name: string; kind: SeatKind };
 
-/** Pidgin callouts for a move that has just been applied (`prev` → `next`). */
+/** Enough of a game to call it: the full local state, or the redacted view a client gets from the server. */
+export type CalloutState = Pick<whot.WhotState, "pending" | "pile" | "players" | "over" | "endReason" | "winners"> &
+  ({ hands: whot.Card[][] } | { handCounts: number[] });
+
+const handCount = (s: CalloutState, p: number) => ("handCounts" in s ? s.handCounts[p] : s.hands[p]?.length);
+
+/** The seat whose win is "You win": the only human at the table, if there is just one. */
+const soleHuman = (seats: WhotSeat[]) => {
+  const humans = seats.flatMap((seat, i) => (seat.kind === "human" ? [i] : []));
+  return humans.length === 1 ? humans[0]! : null;
+};
+
+/**
+ * Pidgin callouts for a move that has just been applied (`prev` → `next`).
+ * `me` is the seat the device belongs to, for "You win" vs "E don cast"; null shows the winner's name.
+ */
 export function whotCallouts(
-  prev: whot.WhotState,
+  prev: CalloutState,
   move: whot.WhotMove,
-  next: whot.WhotState,
+  next: CalloutState,
   seats: WhotSeat[],
+  me: number | null = soleHuman(seats),
 ): Callout[] {
   const name = (p: number) => seats[p]?.name ?? `Player ${p + 1}`;
   const out: Callout[] = [];
@@ -45,22 +61,21 @@ export function whotCallouts(
         if (move.callShape) out.push(special(LINES.callShape(move.callShape)));
         break;
     }
-    if (move.lastCard && next.hands[move.player]?.length === 1) {
+    if (move.lastCard && handCount(next, move.player) === 1) {
       out.push({ text: LINES.lastCard, sfx: "special", speak: true, tone: "info" });
     }
   }
 
-  if (next.over) out.push(...endCallouts(next, seats));
+  if (next.over) out.push(...endCallouts(next, seats, me));
   return out;
 }
 
-function endCallouts(s: whot.WhotState, seats: WhotSeat[]): Callout[] {
-  const humans = seats.flatMap((seat, i) => (seat.kind === "human" ? [i] : []));
+function endCallouts(s: CalloutState, seats: WhotSeat[], me: number | null): Callout[] {
   const out: Callout[] = [];
   if (s.endReason === "market") out.push({ text: LINES.marketFinished, sfx: "special", speak: true, tone: "info" });
   const winners = s.winners.map((p) => seats[p]?.name ?? `Player ${p + 1}`).join(" & ");
-  if (humans.length === 1) {
-    const won = s.winners.includes(humans[0]!);
+  if (me !== null) {
+    const won = s.winners.includes(me);
     if (won) out.push({ text: s.endReason === "checkup" ? LINES.checkUp : LINES.youWin, sfx: "win", speak: true, tone: "good" });
     else out.push({ text: LINES.youLose, sfx: "lose", speak: true, tone: "bad" });
   } else {
