@@ -3,13 +3,14 @@ import { Client, type Room } from '@colyseus/sdk';
 import type { Snapshot } from '@naija/online';
 import type { whot } from '@naija/engine';
 import { createServer } from '../src/app';
+import { guestAuth } from '../src/auth';
 
 const PORT = 2600 + Math.floor(Math.random() * 300);
 const URL = `http://localhost:${PORT}`;
 let server: ReturnType<typeof createServer>;
 
 beforeAll(async () => {
-  server = createServer();
+  server = createServer({ auth: guestAuth, results: null });
   await server.listen(PORT);
 });
 afterAll(async () => {
@@ -91,6 +92,8 @@ describe('private Whot room over WebSockets', () => {
   it('does not hand out private rooms to random matchmaking', async () => {
     const host = await new Client(URL).create('ayo', { nickname: 'Ada', guestId: 'guest-ada-0001' });
     await expect(new Client(URL).join('ayo', { nickname: 'X', guestId: 'guest-x-00001' })).rejects.toThrow();
+    // No identity, no seat.
+    await expect(new Client(URL).joinById(host.roomId, { nickname: 'Nobody' })).rejects.toThrow(/guest id/);
     await host.leave();
   });
 });

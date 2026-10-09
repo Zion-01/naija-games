@@ -6,21 +6,23 @@ import {
   type CreateOptions,
   type ErrorMessage,
   type GameId,
+  type JoinOptions,
   type Snapshot,
   type WhotRoomOptions,
   type WhotWireMove,
 } from "@naija/online";
+import { AccountError, accessToken } from "./account";
 import { createStore } from "./storage";
 
-/** Who you are online: a nickname, and a random device secret the server uses to give you your seat back. */
+/**
+ * Who you are online: a nickname, and a random device id. With accounts on, the server identifies you by your
+ * Supabase session instead, and the guest id is never sent.
+ */
 export type Guest = { nickname: string; guestId: string };
 
 export const guest = createStore<Guest>("naija-games:guest", { nickname: "", guestId: "" });
 
-/**
- * The device's guest identity, created on first use (in an event handler, never during render).
- * KI-1: temporary until Supabase anonymous sign-in (docs/KNOWN_ISSUES.md).
- */
+/** The device's nickname and guest id, created on first use (in an event handler, never during render). */
 export function ensureGuest(nickname?: string): Guest {
   const current = guest.get();
   const next = {
@@ -147,13 +149,20 @@ export const registry = {
   peek: (code: string) => connections.get(code) ?? null,
 };
 
-const client = () => new Client(gameServerUrl());
+/** A game-server client carrying your session, and the join options that go with it. */
+async function signedIn(spectate?: boolean): Promise<{ client: Client; options: JoinOptions }> {
+  const me = ensureGuest();
+  const client = new Client(gameServerUrl());
+  const token = await accessToken(me.nickname);
+  if (token) client.auth.token = token;
+  return { client, options: { nickname: me.nickname, spectate, ...(token ? {} : { guestId: me.guestId }) } };
+}
 
 /** Creates a private room and returns its invite code. The connection waits for /play/CODE to pick it up. */
 export async function createRoom(game: GameId, nickname: string, whot?: WhotRoomOptions): Promise<string> {
-  const me = ensureGuest(nickname);
-  const options: CreateOptions = { ...me, whot };
-  const room = await client().create(game, options);
+  ensureGuest(nickname);
+  const { client, options } = await signedIn();
+  const room = await client.create(game, { ...options, whot } satisfies CreateOptions);
   const conn = new Connection(room.roomId);
   conn.attach(room);
   register(conn);
@@ -169,9 +178,8 @@ export function connect(code: string, opts: { spectate?: boolean } = {}): Connec
   if (existing && (existing.get().status === "connecting" || existing.get().status === "open")) return existing;
   const conn = new Connection(code);
   register(conn);
-  const me = ensureGuest();
-  client()
-    .joinById(code, { ...me, spectate: opts.spectate })
+  signedIn(opts.spectate)
+    .then(({ client, options }) => client.joinById(code, options))
     .then((room) => conn.attach(room))
     .catch((e: unknown) => conn.fail(joinError(e)));
   return conn;
@@ -179,6 +187,7 @@ export function connect(code: string, opts: { spectate?: boolean } = {}): Connec
 
 // KI-21: matches SDK error text; switch to Colyseus error codes.
 function joinError(e: unknown): string {
+  if (e instanceof AccountError) return e.message;
   const message = e instanceof Error ? e.message : String(e);
   if (/not found|expired|no rooms/i.test(message)) return "This room no dey again. Ask your guy for a fresh link.";
   if (/full/i.test(message)) return "Room don full.";

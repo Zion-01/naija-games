@@ -12,7 +12,8 @@ function whotMatch(players = 2, opts = {}) {
   return { match, changes };
 }
 
-const join = (m: Match<any, any, any>, id: string, extra = {}) => m.join(id, { nickname: id, guestId: `guest-${id}-0000`, ...extra });
+const who = (id: string) => ({ playerId: `guest:${id}`, userId: null });
+const join = (m: Match<any, any, any>, id: string, extra = {}) => m.join(id, { nickname: id, ...extra }, who(id));
 
 describe('seating', () => {
   it('seats players in order, deals when the last seat fills, and lets late joiners watch', () => {
@@ -64,7 +65,7 @@ describe('seating', () => {
 
   it('cleans nicknames', () => {
     const { match } = whotMatch(2);
-    match.join('x', { nickname: '  <b>Ada</b>\u0000  the   Great and Mighty One ', guestId: 'guest-x-0000' });
+    match.join('x', { nickname: '  <b>Ada</b>\u0000  the   Great and Mighty One ' }, who('x'));
     expect(match.seats[0]!.name).toBe('bAda/b the Great');
   });
 });
@@ -149,7 +150,7 @@ describe('drops and takeovers', () => {
     expect(match.last).toMatchObject({ player: 0 });
 
     // Same device, new connection: they get their seat back.
-    expect(match.join('a2', { nickname: 'a', guestId: 'guest-a-0000' })).toBe(0);
+    expect(match.join('a2', { nickname: 'a' }, who('a'))).toBe(0);
     expect(match.seats[0]).toMatchObject({ kind: 'human', connected: true, sessionId: 'a2' });
   });
 
@@ -190,5 +191,48 @@ describe('rematch', () => {
     match.requestRematch('a');
     match.leave('b');
     expect(match.status).toBe('playing');
+  });
+});
+
+describe('results', () => {
+  it('reports each seat once when the game ends, marking computer seats and players the computer finished for', () => {
+    const onOver = vi.fn();
+    const match = new Match('AYOO', ayoRules(), 1, () => {}, { onOver });
+    match.join('a', { nickname: 'Ada' }, { playerId: 'user-a', userId: 'user-a' });
+    match.join('b', { nickname: 'Bayo' }, { playerId: 'guest:b', userId: null });
+    const started = match.startedAt;
+    match.leave('b');
+    for (let i = 0; i < 400 && match.status === 'playing'; i++) vi.advanceTimersByTime(30_000);
+    expect(match.status).toBe('over');
+    expect(onOver).toHaveBeenCalledTimes(1);
+
+    const record = onOver.mock.calls[0]![0];
+    const s = match.state as ayo.AyoState;
+    const result = (i: number) => (s.winner === null ? 'drawn' : s.winner === i ? 'won' : 'lost');
+    expect(record).toEqual({
+      game: 'ayo',
+      code: 'AYOO',
+      round: 0,
+      startedAt: started,
+      players: [
+        { seat: 0, userId: 'user-a', name: 'Ada', kind: 'human', result: result(0), abandoned: false },
+        { seat: 1, userId: null, name: 'Bayo', kind: 'human', result: result(1), abandoned: true },
+      ],
+    });
+  });
+
+  it('records computer seats as computer, and shared Whot wins as draws', () => {
+    const rules = whotRules({ players: 3 });
+    const s = rules.create(1, 0);
+    expect(rules.results({ ...s, over: true, winners: [0, 2] })).toEqual(['drawn', 'lost', 'drawn']);
+    expect(rules.results({ ...s, over: true, winners: [1] })).toEqual(['lost', 'won', 'lost']);
+
+    const onOver = vi.fn();
+    const match = new Match('ABCD', rules, 1, () => {}, { onOver });
+    join(match, 'a');
+    match.start('a');
+    for (let i = 0; i < 2000 && match.status === 'playing'; i++) vi.advanceTimersByTime(20_000);
+    expect(onOver).toHaveBeenCalledTimes(1);
+    expect(onOver.mock.calls[0]![0].players.map((p: { kind: string }) => p.kind)).toEqual(['human', 'ai', 'ai']);
   });
 });

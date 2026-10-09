@@ -3,20 +3,24 @@ import {
   MAX_SPECTATORS,
   TURN_SECONDS,
   cleanNickname,
+  type GameId,
   type JoinOptions,
   type RoomStatus,
   type RoomSummary,
   type SeatInfo,
   type Snapshot,
 } from '@naija/online';
-import type { GameRules } from './games';
+import type { Identity } from './auth';
+import type { GameResult, GameRules } from './games';
 
 export type Seat = {
   name: string;
   kind: 'human' | 'ai';
   host: boolean;
-  /** The device secret of the human who owns this seat. Kept after a computer takeover so they can reclaim it. */
-  guestId: string | null;
+  /** The verified player who owns this seat. Kept after a computer takeover so they can reclaim it. */
+  playerId: string | null;
+  /** Their account, if signed in; results are saved against it. */
+  userId: string | null;
   /** The connected client in this seat, if any. */
   sessionId: string | null;
   connected: boolean;
@@ -31,6 +35,25 @@ export type MatchOptions = {
   rateLimit?: number;
   rateWindowMs?: number;
   now?: () => number;
+  /** Called once when a game ends, to save the result. */
+  onOver?: (record: MatchRecord) => void;
+};
+
+/** A finished game, as saved to the `matches` and `match_players` tables. */
+export type MatchRecord = {
+  game: GameId;
+  code: string;
+  round: number;
+  startedAt: number;
+  players: {
+    seat: number;
+    userId: string | null;
+    name: string;
+    kind: 'human' | 'ai';
+    result: GameResult;
+    /** A human left and the computer finished the game for them. */
+    abandoned: boolean;
+  }[];
 };
 
 // KI-15: can clash with real players' nicknames.
@@ -51,6 +74,7 @@ export class Match<S, M, V> {
   round = 0;
   deadline: number | null = null;
   readonly rematch = new Set<number>();
+  startedAt = 0;
 
   private readonly rng: Rng;
   private readonly aiDelayMs: number;
@@ -58,6 +82,7 @@ export class Match<S, M, V> {
   private readonly rateLimit: number;
   private readonly rateWindowMs: number;
   private readonly now: () => number;
+  private readonly onOver: ((record: MatchRecord) => void) | undefined;
   private turnTimer: ReturnType<typeof setTimeout> | null = null;
   private turnTimerKey = '';
   private readonly reactTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -78,6 +103,7 @@ export class Match<S, M, V> {
     this.rateLimit = opts.rateLimit ?? 10;
     this.rateWindowMs = opts.rateWindowMs ?? 2000;
     this.now = opts.now ?? Date.now;
+    this.onOver = opts.onOver;
   }
 
   seatOf(sessionId: string) {
@@ -89,12 +115,11 @@ export class Match<S, M, V> {
   }
 
   /** Seats a joining client, gives a returning player their seat back, or lets them watch. Throws a pidgin message if the room is full. */
-  join(sessionId: string, opts: Partial<JoinOptions> = {}): number {
+  join(sessionId: string, opts: Partial<JoinOptions>, who: Identity): number {
     const name = cleanNickname(opts.nickname);
-    const guestId = typeof opts.guestId === 'string' && opts.guestId.length >= 8 && opts.guestId.length <= 64 ? opts.guestId : null;
 
-    // KI-7/KI-8: a raw guestId is enough to take the seat, and a second tab silently steals it.
-    const mine = guestId ? this.seats.findIndex((s) => s?.guestId === guestId) : -1;
+    // KI-8: a second tab silently steals the seat.
+    const mine = this.seats.findIndex((s) => s?.playerId === who.playerId);
     if (mine >= 0) {
       Object.assign(this.seats[mine]!, { sessionId, connected: true, kind: 'human', name });
       this.changed();
@@ -103,7 +128,7 @@ export class Match<S, M, V> {
 
     const open = this.seats.indexOf(null);
     if (!opts.spectate && this.status === 'waiting' && open >= 0) {
-      this.seats[open] = { name, kind: 'human', host: !this.host, guestId, sessionId, connected: true };
+      this.seats[open] = { name, kind: 'human', host: !this.host, playerId: who.playerId, userId: who.userId, sessionId, connected: true };
       if (!this.seats.includes(null)) this.begin();
       else this.changed();
       return open;
@@ -159,7 +184,7 @@ export class Match<S, M, V> {
     let ai = 0;
     for (let i = 0; i < this.seats.length; i++) {
       if (this.seats[i]) continue;
-      this.seats[i] = { name: AI_NAMES[ai++ % AI_NAMES.length]!, kind: 'ai', host: false, guestId: null, sessionId: null, connected: true };
+      this.seats[i] = { name: AI_NAMES[ai++ % AI_NAMES.length]!, kind: 'ai', host: false, playerId: null, userId: null, sessionId: null, connected: true };
     }
     this.begin();
     return null;
@@ -220,6 +245,7 @@ export class Match<S, M, V> {
   private begin() {
     this.state = this.rules.create((this.seed + this.round * 7919) >>> 0, this.round);
     this.status = 'playing';
+    this.startedAt = this.now();
     this.last = null;
     this.moves = 0;
     this.rematch.clear();
@@ -243,9 +269,30 @@ export class Match<S, M, V> {
     this.state = result.state;
     this.last = move;
     this.moves++;
-    if (this.rules.over(result.state)) this.status = 'over';
+    if (this.rules.over(result.state)) {
+      this.status = 'over';
+      this.onOver?.(this.record(result.state));
+    }
     this.changed();
     return null;
+  }
+
+  private record(state: S): MatchRecord {
+    const results = this.rules.results(state);
+    return {
+      game: this.rules.id,
+      code: this.code,
+      round: this.round,
+      startedAt: this.startedAt,
+      players: this.seats.map((s, seat) => ({
+        seat,
+        userId: s!.userId,
+        name: s!.name,
+        kind: s!.playerId ? 'human' : 'ai',
+        result: results[seat]!,
+        abandoned: s!.playerId !== null && s!.kind === 'ai',
+      })),
+    };
   }
 
   private changed() {

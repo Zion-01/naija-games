@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Two-browser online tests. Starts the game server and the web app, then plays a private room
  * from two separate browser contexts. Run with `pnpm e2e` (not part of `pnpm test`).
  * Set PW_CHROMIUM to use an already-installed Chromium instead of Playwright's download.
+ * Accounts are switched off (empty Supabase vars override any .env.local), so players are device guests.
  */
 export default defineConfig({
   testDir: "e2e",
@@ -18,11 +19,12 @@ export default defineConfig({
     {
       command: "pnpm --dir ../server start",
       url: "http://localhost:2567/health",
-      env: { PORT: "2567" },
+      env: { PORT: "2567", SUPABASE_URL: "" },
       reuseExistingServer: true,
     },
     {
       command: "pnpm exec next dev -p 3100",
+      env: { NEXT_PUBLIC_SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "" },
       url: "http://localhost:3100",
       reuseExistingServer: true,
       timeout: 120_000,
