@@ -33,6 +33,7 @@ export type MatchOptions = {
   now?: () => number;
 };
 
+// KI-15: can clash with real players' nicknames.
 const AI_NAMES = ['Mama Put', 'Oga Tunde', 'Aunty Bisi', 'Baba Ibeji'];
 
 /**
@@ -92,6 +93,7 @@ export class Match<S, M, V> {
     const name = cleanNickname(opts.nickname);
     const guestId = typeof opts.guestId === 'string' && opts.guestId.length >= 8 && opts.guestId.length <= 64 ? opts.guestId : null;
 
+    // KI-7/KI-8: a raw guestId is enough to take the seat, and a second tab silently steals it.
     const mine = guestId ? this.seats.findIndex((s) => s?.guestId === guestId) : -1;
     if (mine >= 0) {
       Object.assign(this.seats[mine]!, { sessionId, connected: true, kind: 'human', name });

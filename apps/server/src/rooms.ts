@@ -3,7 +3,10 @@ import { MAX_SPECTATORS, MSG, RECONNECT_SECONDS, randomCode, type CreateOptions,
 import { ayoRules, whotRules, type AnyRules } from './games';
 import { Match } from './match';
 
-/** Private rooms keyed by their invite code, so the HTTP API can describe a room for link previews. */
+/**
+ * Private rooms keyed by their invite code, so the HTTP API can describe a room for link previews.
+ * KI-5: process-local, so rooms die on restart and this can't scale past one node yet.
+ */
 export const matches = new Map<string, Match<unknown, unknown, unknown>>();
 
 abstract class GameRoom extends Room {
