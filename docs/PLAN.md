@@ -29,7 +29,7 @@ naija-games/
   apps/web/             Next.js: /, /whot, /ayo, /play/[roomId], /profile
     components/cards/   SVG Whot cards (drawn by us, not scanned)
     components/ayo/     board + seed physics-lite animation
-    lib/voice.ts        pidgin lines + SFX
+    lib/callouts.ts     pidgin lines + SFX
 ```
 
 Engine contract (same shape for both games): `initialState(opts, seed)`, `legalMoves(state, player)`, `applyMove(state, move) → state | error`, `viewFor(state, player)` (redacted view), `isOver/result`. The server only calls these functions, the offline mode runs the same engine in the browser, and the AI searches over `legalMoves` and `applyMove`.
@@ -55,7 +55,7 @@ Engine contract (same shape for both games): `initialState(opts, seed)`, `legalM
 **Phase 2: Offline web game (4–5 days). First shareable build.**
 - Mobile-first table UI: drag or tap to play a card, a market pile, turn indicator and shape picker. For Ayo, a wooden board where you tap a pit and watch the seeds get sown.
 - Vs-AI and pass-and-play modes, PWA install, and visuals inspired by ankara fabric (with dark mode).
-- Pidgin voice and toast lines: "Oya pick two!", "Hold on!", "General market!", "Check up! 🎉", "E don cast" when you lose. Haptics through `navigator.vibrate`, with sound on/off.
+- Pidgin toast lines: "Oya pick two!", "Hold on!", "General market!", "Check up! 🎉", "E don cast" when you lose. Haptics through `navigator.vibrate`, with sound on/off. (A text-to-speech voice was tried and removed in Phase 5.)
 
 **Phase 3: Online multiplayer (5–7 days).**
 - Colyseus `WhotRoom` and `AyoRoom` run the engine on the server. Clients only send moves and receive their redacted view.

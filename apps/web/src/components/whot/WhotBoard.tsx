@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { whot } from "@naija/engine";
 import { Modal } from "@/components/ui";
 import { sfx } from "@/lib/feedback";
-import { LINES } from "@/lib/voice";
+import { LINES } from "@/lib/callouts";
 import type { WhotSeat } from "@/lib/whot-session";
 import { CardBack, ShapeGlyph, WhotCard, cardLabel } from "./WhotCard";
 

@@ -7,7 +7,7 @@ import { GameHeader, Modal, PrimaryButton, Segmented, Toasts, useCallouts } from
 import { OnlineSetup } from "@/components/online/OnlineSetup";
 import { ayoCallouts } from "@/lib/ayo-session";
 import { recordResult } from "@/lib/stats";
-import { LINES } from "@/lib/voice";
+import { LINES } from "@/lib/callouts";
 import { AyoBoard, PlayerBar, useSowAnimation } from "./AyoBoard";
 
 type Mode = "ai" | "pass" | "online";
@@ -112,7 +112,7 @@ function AyoTable({ config, seed, onRestart }: { config: Config; seed: number; o
     (move: ayo.AyoMove) => {
       const result = ayo.applyMove(state, move);
       if (!result.ok) {
-        push([{ text: result.error, sfx: "error", speak: false, tone: "bad" }]);
+        push([{ text: result.error, sfx: "error", tone: "bad" }]);
         return;
       }
       start(state, move, result.state);

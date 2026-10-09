@@ -53,20 +53,3 @@ export function sfx(kind: Sfx) {
   }
 }
 
-/** Speaks a pidgin line with the device's voice, preferring a Nigerian English voice when there is one. */
-export function say(line: string) {
-  const { sound, voice } = settings.get();
-  if (!sound || !voice || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  try {
-    const text = line.replace(/\p{Extended_Pictographic}/gu, "").trim();
-    if (!text) return;
-    const u = new SpeechSynthesisUtterance(text);
-    const voices = window.speechSynthesis.getVoices();
-    u.voice = voices.find((v) => v.lang === "en-NG") ?? voices.find((v) => v.lang.startsWith("en")) ?? null;
-    u.rate = 1.08;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch {
-    // Speech unavailable.
-  }
-}

@@ -1,5 +1,5 @@
 import { whot } from "@naija/engine";
-import { LINES, type Callout } from "./voice";
+import { LINES, type Callout } from "./callouts";
 
 export type SeatKind = "human" | "ai";
 export type WhotSeat = { name: string; kind: SeatKind };
@@ -31,13 +31,13 @@ export function whotCallouts(
   const out: Callout[] = [];
 
   if (move.type === "catch") {
-    out.push({ text: LINES.caught(name(move.player), name(move.target)), sfx: "special", speak: true, tone: "bad" });
+    out.push({ text: LINES.caught(name(move.player), name(move.target)), sfx: "special", tone: "bad" });
   } else if (move.type === "draw") {
     const amount = prev.pending?.amount ?? 1;
-    if (amount > 1) out.push({ text: LINES.picked(name(move.player), amount), sfx: "draw", speak: false, tone: "info" });
+    if (amount > 1) out.push({ text: LINES.picked(name(move.player), amount), sfx: "draw", tone: "info" });
   } else {
     const card = whot.topCard(next);
-    const special = (text: string): Callout => ({ text, sfx: "special", speak: true });
+    const special = (text: string): Callout => ({ text, sfx: "special" });
     const count = 1 + (move.stack?.length ?? 0);
     switch (card.number) {
       case whot.HOLD_ON:
@@ -70,7 +70,7 @@ export function whotCallouts(
         if (count > 1) out.push(special(LINES.combo(count)));
     }
     if (move.lastCard && handCount(next, move.player) === 1) {
-      out.push({ text: LINES.lastCard, sfx: "special", speak: true, tone: "info" });
+      out.push({ text: LINES.lastCard, sfx: "special", tone: "info" });
     }
   }
 
@@ -80,17 +80,16 @@ export function whotCallouts(
 
 function endCallouts(s: CalloutState, seats: WhotSeat[], me: number | null): Callout[] {
   const out: Callout[] = [];
-  if (s.endReason === "market") out.push({ text: LINES.marketFinished, sfx: "special", speak: true, tone: "info" });
+  if (s.endReason === "market") out.push({ text: LINES.marketFinished, sfx: "special", tone: "info" });
   const winners = s.winners.map((p) => seats[p]?.name ?? `Player ${p + 1}`).join(" & ");
   if (me !== null) {
     const won = s.winners.includes(me);
-    if (won) out.push({ text: s.endReason === "checkup" ? LINES.checkUp : LINES.youWin, sfx: "win", speak: true, tone: "good" });
-    else out.push({ text: LINES.youLose, sfx: "lose", speak: true, tone: "bad" });
+    if (won) out.push({ text: s.endReason === "checkup" ? LINES.checkUp : LINES.youWin, sfx: "win", tone: "good" });
+    else out.push({ text: LINES.youLose, sfx: "lose", tone: "bad" });
   } else {
     out.push({
       text: s.endReason === "checkup" ? `${LINES.checkUp} ${LINES.theyCheckedUp(winners)}` : `${winners} win!`,
       sfx: "win",
-      speak: true,
       tone: "good",
     });
   }

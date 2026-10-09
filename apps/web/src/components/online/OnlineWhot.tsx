@@ -29,7 +29,7 @@ export function OnlineWhot({ snap, conn, push }: { snap: Snapshot<"whot">; conn:
     const before = prev.current;
     prev.current = snap;
     if (before && snap.round !== before.round) {
-      push([{ text: "New game! Oya shuffle!", sfx: "special", speak: true, tone: "info" }]);
+      push([{ text: "New game! Oya shuffle!", sfx: "special", tone: "info" }]);
       return;
     }
     if (!before?.view || !isNextMove(before, snap)) return;
@@ -64,7 +64,7 @@ export function OnlineWhot({ snap, conn, push }: { snap: Snapshot<"whot">; conn:
         }
         onDraw={() => send({ type: "draw" })}
         onCatch={(target) => send({ type: "catch", target })}
-        onInvalid={(text) => push([{ text, sfx: "error", speak: false, tone: "bad" }])}
+        onInvalid={(text) => push([{ text, sfx: "error", tone: "bad" }])}
       />
       {view.over && (
         <WhotResult view={view as whot.WhotView} seats={seats} me={me}>
